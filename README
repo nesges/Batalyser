@@ -1,0 +1,6 @@
+In Batalyser sql_layer.php and dbconfig.php are located outside the 
+document-root. Move them to a proper position in your installation or
+change all lines including sql_layer.php.
+
+Please put a link back to batalyser.net if you decide to use batalysers
+sourcecode. Thank you! :-)
