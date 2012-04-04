@@ -9,15 +9,19 @@
     
     global $guil, $version;
 
+    // debug for user Marduc only
+    if($_SESSION['user_id'] == 2) {
+        // error_reporting(E_ALL);
+    }
+
     include("include/class.benchmark.php");
-    $benchmark = new Benchmark();
-    $benchmark->snapshot('start');
+    $benchmark = new Benchmark("benchmarks");
     
     $sql_debug=0;
     $sql_layer_database_mode='new';
     $sql_layer_database=12;
     include("../../../sql_layer.php");
-    $benchmark->snapshot('db_connected');
+    unset($db); // no need to keep logindata in memory
     
     include("include/constants.php");
     include("include/language.de.php");
@@ -29,10 +33,8 @@
     include("include/class.tab_enemies_damage_to_char.php");
     include("include/class.tab_full_fight_stats.php");
     include("include/class.tab_full_fight_graphs.php");
-    
-    $benchmark->snapshot('after_includes');
 
-    // limit upload to 524288 Bytes (512kB)
+    // limit upload to 524288 Bytes (512kB) / 1048576 Bytes (1MB)
     // in the upload form there are additional mentions of MAX_FILE_SIZE
     define("MAX_FILE_SIZE", 1048576);
     ini_set("upload_max_filesize", MAX_FILE_SIZE);
@@ -72,7 +74,6 @@
     if(isset($_GET['cacherenew'])) {
         $cacherenew = $_GET['cacherenew'];
     }
-    $cacherenew=1;
 
     $message="";
     $errormessage="";
@@ -81,9 +82,6 @@
     if(isset($_GET['message'])) {
         $message = $_GET['message'];
     }
-
-    global $logdata;
-    $logdata = array(); // global hashmap, populated by parser->gather_logdata()
 
     // ops which don't need a database connection
     switch($op) {
@@ -181,6 +179,8 @@
                         $_SESSION['log_id'] = $logfile_id;
                 
                         $parser = new Parser($filename, $logfile_id);
+                        $parser->read_loglines();
+                        $parser->gather_logdata();
                         if(count($parser->players) > 3) {
                             $playerlist = join(', ', array_slice(array_keys($parser->players), 0, 3)).'...';
                         } else {
@@ -192,7 +192,7 @@
                             $errormessage = "Das Log enthielt keine Kampfdaten.";
                             $errormessage_returnto = "document.location.href=\"?op=noop\"";
                         } else {
-                            $notes = '['.date("d.m. H:i", $parser->start_timestamp).'-'.date("H:i", $parser->end_timestamp).'] '.$playerlist.': '.$parser->fight_count.' Kämpfe, '.$parser->enemy_count.' Gegner';
+                            $notes = '['.date("d.m. H:i", $parser->start_timestamp).'-'.date("H:i", $parser->end_timestamp).'] '.$playerlist.': '.$parser->fight_count.' Kämpfe, '.(count($parser->actors)-1).' Gegner';
                             sql_query("update logfile set notes='".$notes."' where id='".$logfile_id."'");
                 
                             // insert new effects, abilities etc.
@@ -206,6 +206,7 @@
                                         }
                                     }
                                 }
+                                unset($parser->abilities);
                                 if($parser->actors) {
                                     foreach($parser->actors as $key => $value) {
                                         if($key && $value) {
@@ -215,6 +216,7 @@
                                         }
                                     }
                                 }
+                                unset($parser->actors);
                                 if($parser->effects) {
                                     foreach($parser->effects as $key => $value) {
                                         if($key && $value) {
@@ -224,6 +226,7 @@
                                         }
                                     }
                                 }
+                                unset($parser->effects);
                                 if($parser->effect_types) {
                                     foreach($parser->effect_types as $key => $value) {
                                         if($key && $value) {
@@ -233,6 +236,7 @@
                                         }
                                     }
                                 }
+                                unset($parser->effects_types);
                                 if($parser->hit_types) {
                                     foreach($parser->hit_types as $key => $value) {
                                         if($key && $value) {
@@ -242,7 +246,9 @@
                                         }
                                     }
                                 }
+                                unset($parser->hit_types);
                             }
+                            $parser->serialize_self();
                             header("Location: ".$_SERVER['PHP_SELF']."?op=setopt");
                             exit();
                         }
@@ -333,8 +339,6 @@
             if(file_exists($cache_filename_pixelmap) && !$cacherenew=1) {
                 readfile($cache_filename_pixelmap);
             } else {
-                $parser = new Parser($logfiles[$_SESSION['log_id']]['filename'], $_SESSION['log_id']);
-                $logdata = $parser->logdata;
                 pixelmap($_GET['min_id'], $_GET['max_id'], $_GET['section'], $_GET['secondary_sections'], $_GET['char'], $conditions, $eventtext, $dim_x, $dim_y);
             }
 
@@ -487,6 +491,7 @@
                                     <th>Kämpfe</th>
                                     <th>Gegner</th>
                                     <th>Dateiname</th>
+                                    <th>Upload</th>
                                     <th>Aktionen</th>
                                 </tr>
                             </thead>
@@ -504,7 +509,8 @@
                                 <td>".$matches[5]."</td>
                                 <td>".$matches[6]."</td>
                                 <td>".preg_replace('#/?upload(/'.$_SESSION['user_id'].')?/?#', '', $logfile['filename'])."</td>
-                                <td><a href='?op=setopt&logfile=".$logfile_id."'>[Anzeigen]</a></td>
+                                <td>".date('Y-m-d H:i:s', $logfile['timestamp'])."</td>
+                                <td><a href='?op=setopt&logfile=".$logfile_id."'>[Anzeigen]</a> <a href='?op=logdownload&logfile=".$logfile_id."'>[Download]</a></td>
                             </tr>";
                 }
                 print "</tbody>
@@ -531,13 +537,13 @@
                         </table>
                         <input type='hidden' name='op' value='bugreport'>
                     </form>
-                </div>";
-    print "</div>"; // accordion options
-    print "</div>"; // dialog options
+                </div>
+            </div><!-- accordion options -->
+        </div><!-- dialog options -->
 
-    print "<div id='dialog_upload'>
-        <p>Der Upload wird gestartet. Im Anschluss wird das Combatlog geparst. Das kann einige Minuten dauern, bitte hab ein wenig Geduld.</p>
-        <p>Wenn der Parser fertig ist, wird dieses Fenster geschlossen und der Einstellungsdialog angezeigt.</p>
+        <div id='dialog_upload'>
+            <p>Der Upload wird gestartet. Im Anschluss wird das Combatlog geparst. Das kann einige Minuten dauern, bitte hab ein wenig Geduld.</p>
+            <p>Wenn der Parser fertig ist, wird dieses Fenster geschlossen und der Einstellungsdialog angezeigt.</p>
         </div>
 
         <div id='dialog_help'>
@@ -548,280 +554,272 @@
         endofpage();
     }
 
+    print flushandcache(1);
     // at this point we have a logged in user, a chosen logfile and a minimum fight duration
     // we are able to gather logdata now
     
     $benchmark->snapshot('before_loading_parser');
 
-    if(!isset($parser) || !$parser->logdata || !$logdata) {
+    if(!isset($parser)) {
         $parser = new Parser($logfiles[$_SESSION['log_id']]['filename'], $_SESSION['log_id']);
-        $logdata = $parser->logdata;
     }
     $benchmark->snapshot('after_loading_parser');
 
-    if(count($logdata['players'])<1) {
-        // TODO: do something not confusing here
-        header("Location: ?op=setopt&logfile=");
+    if(count($parser->players)<1) {
+        header("Location: ?op=setopt&logfile=&message=Das Logfile enthält keine Chardaten");
         exit();
     }
 
-    // if a prefered language was selected we translate $logdata now
-    if(isset($_SESSION['language'])) {
-        foreach(array('ability', 'effect', 'effect_type') as $translateable) {
-            $res = sql_query("select id, ".$_SESSION['language']." from ".$translateable);
-            while(list($id, $name) = sql_fetch_row($res)) {
-                $translation[$translateable][$id] = $name;
-            }
-
-            foreach($translation[$translateable] as $id => $name) {
-                foreach(array_keys($logdata) as $logdata_id) {
-                    if($logdata[$logdata_id][$translateable.'_id'] == $id && $name) {
-                        $logdata[$logdata_id][$translateable.'_name'] = $name;
-                    }
-                }
-            }
-        }
-        
-        $res = sql_query("select id, ".$_SESSION['language']." from hit_type");
-        while(list($id, $name) = sql_fetch_row($res)) {
-            $translation['hit_type'][$id] = $name;
-        }
-        foreach($translation['hit_type'] as $id => $name) {
-            foreach(array_keys($logdata) as $logdata_id) {
-                if($logdata[$logdata_id]['hit_type_id'] == $id && $name) {
-                    $logdata[$logdata_id]['damage_type'] = $name;
-                     $logdata[$logdata_id]['hit_type_name'] = $name;
-                }
-            }
-        }
-    
-        $res = sql_query("select id, ".$_SESSION['language']." from actor");
-        while(list($id, $name) = sql_fetch_row($res)) {
-            $translation['actor'][$id] = $name;
-        }
-        foreach($translation['actor'] as $id => $name) {
-            foreach(array_keys($logdata) as $logdata_id) {
-                if($logdata[$logdata_id]['source_id'] == $id && $name) {
-                    $logdata[$logdata_id]['source_name'] = $name;
-                }
-                if($logdata[$logdata_id]['target_id'] == $id && $name) {
-                    $logdata[$logdata_id]['target_name'] = $name;
-                }
-            }
-        }
-    }
-
-    $benchmark->snapshot('before_unset_of_translation');
     unset($res);
-    unset($translation); // isn't needed anymore
-    $benchmark->snapshot('logdata_translated');
     
     print "<div class='accordion'>";
-    foreach(array_keys($logdata['players']) as $char) {
-        if(! $char) {
+    foreach(array_keys($parser->players) as $char) {
+        if(!$char || !$parser->players[$char]['fights']) {
             break;
         }
         $_char = preg_replace('/[^a-z0-9-_]/i', '_', $char);
         $fights_displayed=0;
         $fights_hidden=0;
         $fight_nr=0;
-        $output_accordion_page ="";
 
-        $min_id = $logdata['players'][$char]['min_id'];
-        $max_id = $logdata['players'][$char]['max_id'];
-        $min_timestamp = $logdata[$logdata['players'][$char]['min_id']]['timestamp'];
-        $max_timestamp = $logdata[$logdata['players'][$char]['max_id']]['timestamp'];
-        $duration = $max_timestamp - $min_timestamp;
-
-        // Logrange
-        // if(isset($_SESSION['min_logrange'])) {
-        //     $logrange_start_timestamp = $min_timestamp + $_SESSION['min_logrange']-1; // cause it can't be 0
-        // } else {
-        //     $logrange_start_timestamp = $min_timestamp;
-        // }
-        //
-        // if(isset($_SESSION['max_logrange'])) {
-        //     $logrange_stop_timestamp = $min_timestamp + $_SESSION['max_logrange'];
-        // } else {
-        //     $logrange_stop_timestamp = $max_timestamp;
-        // }
-        // $sql_logrange = " timestamp between FROM_UNIXTIME($logrange_start_timestamp) and FROM_UNIXTIME($logrange_stop_timestamp) ";
-
+        $min_id = $parser->players[$char]['min_id'];
+        $max_id = $parser->players[$char]['max_id'];
+       
+        $summary_duration = 0;
+        $summary_damage   = 0;
+        $summary_threat   = 0;
+        $summary_healed   = 0;
         
-        if($duration > 0) {
-            $summary_duration = 0;
-            $summary_damage   = 0;
-            $summary_threat   = 0;
-            $summary_healed   = 0;
+        print "<h2><a name='stats_for_".$_char."'>Damagestats für ".$char." (".$fights_displayed." ".($fights_displayed==1?"Kampf":"Kämpfe")." angezeigt, ".$fights_hidden." versteckt)</a></h2>
+                    <div> <!-- empty div that fixes accordion width bug -->
+                        <div class='accordion'>";
+        
+        foreach($parser->players[$char]['fights'] as $fight) {
+            $fight_start_id = $fight['start_id'];
+            $fight_start_timestamp = $fight['start_timestamp'];
+            $fight_end_id = $fight['end_id'];
+            $fight_end_timestamp = $fight['end_timestamp'];
             
-            foreach($logdata['players'][$char]['fights'] as $fight) {
-                $fight_start_id = $fight['start_id'];
-                $fight_start_timestamp = $fight['start_timestamp'];
-                $fight_end_id = $fight['end_id'];
-                $fight_end_timestamp = $fight['end_timestamp'];
-
-                $fight_nr++;
-                $single_fight_duration = $fight_end_timestamp - $fight_start_timestamp;
-
-                if($single_fight_duration >= $_SESSION['min_fight_duration']) {
-                    $fights_displayed++;
-
-                    $tabs = array();
-                    $tabs[] = new Tab_DpsHpsTps_per_Target(
-                            'fight'.$fight_nr.'-'.preg_replace('/\s/', '', $_char).'-damage',
-                            $char,
-                            $fight_start_id,
-                            $fight_end_id
-                        );
-                    $benchmark->snapshot('fight_'.$fight_nr.'_tab_1');
-                    $tabs[] = new Tab_Char_DpsTps_per_Ability(
-                            'fight'.$fight_nr.'-'.preg_replace('/\s/', '', $_char).'-dmgthreatabilities',
-                            $char,
-                            $fight_start_id,
-                            $fight_end_id
-                        );
-                    $benchmark->snapshot('fight_'.$fight_nr.'_tab_2');
-                    $tabs[] = new Tab_Char_HpsTps_per_Ability(
-                            'fight'.$fight_nr.'-'.preg_replace('/\s/', '', $_char).'-healthreatabilities',
-                            $char,
-                            $fight_start_id,
-                            $fight_end_id
-                        );
-                    $benchmark->snapshot('fight_'.$fight_nr.'_tab_3');
-                    $tabs[] = new Tab_Enemies_Damage_to_Char(
-                            'fight'.$fight_nr.'-enemies-vs-'.preg_replace('/\s/', '', $_char).'-sources',
-                            $char,
-                            $fight_start_id,
-                            $fight_end_id
-                        );
-                    $benchmark->snapshot('fight_'.$fight_nr.'_tab_4');
-                    $tabs[] = new Tab_Full_Fight_Stats(
-                            'fight'.$fight_nr.'-'.$_char.'-fullfight-stats',
-                            $char,
-                            $fight_start_id,
-                            $fight_end_id
-                        );
-                    $benchmark->snapshot('fight_'.$fight_nr.'_tab_5');
-                    $tabs[] = new Tab_Full_Fight_Graphs(
-                            'fight'.$fight_nr.'-'.$_char.'-fullfight-graphs',
-                            $char,
-                            $fight_start_id,
-                            $fight_end_id
-                        );
-                    $benchmark->snapshot('fight_'.$fight_nr.'_tab_6');
-                    // Daten in Tabs ausgeben
-
-                    // Dauer lesbar machen
-                    $__time = $single_fight_duration;
-                    $hours = floor($__time / (60*60));
-                    $__time = $__time - $hours * (60*60);
-                    $minutes = floor($__time / (60));
-                    $__time = $__time - $minutes * 60;
-                    $seconds = $__time;
-
-                    if($fight['sum']['threat']>0) {
-                        $fight_title  = "Kampf ".$fight_nr;
-                        $fight_title .= ": Dauer ".sprintf('%s:%02s:%02s',$hours,$minutes,$seconds).", ";
-                        $fight_title .= "am ".date('d.m.', $fight_start_timestamp)." von ".date('H:i:s', $fight_start_timestamp)." bis ".date('H:i:s', $fight_end_timestamp);
-                        $fight_title .= " [".round($fight['sum']['damage'] / $single_fight_duration, 2)." DPS ";
-                        $fight_title .= "| ".round($fight['sum']['threat'] / $single_fight_duration, 2)." TPS ";
-                        $fight_title .= "| ".round($fight['sum']['healed'] / $single_fight_duration, 2)." HPS ] ";
-                        if($fight['sum']['damage']>0) {
-                            $fight_title .= $fight['sum']['damage']." Schaden verursacht, ";
-                        }
-                        if($fight['sum']['healed']>0) {
-                            $fight_title .= $fight['sum']['healed']." Punkte geheilt, ";
-                        }
-                        $fight_title .= $fight['sum']['threat']." Bedrohung erzeugt.";
-
-                        $output_accordion_page .= "<h3><a href='#'>".$fight_title."</a></h3>
-                            <div>
-                                <div class='tabs'>
-                                    <ul>";
-                                        foreach($tabs as $tab) {
-                                            $output_accordion_page .= $tab->nameplate();
-                                        }
-                                        // $output_accordion_page .= "<li><a href='ajax_tab.php?tab=Tab_DpsHpsTps_per_Target&char=".$char."&min_id=".$fight['start_id']."&max_id=".$fight['end_id']."'>bla</a></li>";
-                        $output_accordion_page .= "     </ul>";
-
-                        foreach($tabs as $tab) {
-                            $output_accordion_page .= $tab->tabcontent();
-                        }
-                        $output_accordion_page .= "</div>
-                            </div>";
-                            
-                        // collect data for summary tab
-                        $summary_duration += $single_fight_duration;
-                        $summary_damage += $fight['sum']['damage'];
-                        $summary_threat += $fight['sum']['threat'];
-                        $summary_healed += $fight['sum']['healed'];
-                    }
-                    $benchmark->snapshot('fight_'.$fight_nr.'_printed');
-                } else {
-                    $fights_hidden++;
-                }
+            if(!$min_timestamp) {
+                $min_timestamp = $fight['start_timestamp'];
             }
+            $max_timestamp = $fight['end_timestamp'];
+            
+            $fight_nr++;
+            $single_fight_duration = $fight_end_timestamp - $fight_start_timestamp;
 
-            // Gesamt
-            if($fights_displayed<1 && $fight_nr>0) {
-                $output_accordion_page .= "Tipp: Wenn keine einzelnen Kämpfe angezeigt werden, dann prüfe ob du in den Optionen eine zu hohe Mindest-Kampfdauer gewählt hast.";
-            }
-
-            $tabs = array();
-            $benchmark->snapshot('before_summary');
+            if($single_fight_duration >= $_SESSION['min_fight_duration']) {
+                $fights_displayed++;
                 
-            // regarding the eval bullshit below:
-            //   I'd rather put all tabs into an array to loop thru and call their nameplate and tabcontent methods
-            //   but doing so eats memory. lots.
-            //   using eval frees memory used by each tab object immediately
-            $tabs = array('Tab_DpsHpsTps_per_Target', 'Tab_Char_DpsTps_per_Ability', 'Tab_Char_HpsTps_per_Ability', 'Tab_Enemies_Damage_to_Char', 'Tab_Full_Fight_Stats', 'Tab_Full_Fight_Graphs');
+                // tabs are able to fetch logdata themselves, but this is rather cpu-intensive
+                // so prefetch single-fight-data
+                unset($parser->logdata);
+                $parser->read_loglines($fight_start_id, $fight_end_id);
+                $parser->gather_logdata();
+                unset($parser->loglines);
+                
+                $tabs = array();
+                $tabs[] = new Tab_DpsHpsTps_per_Target(
+                        'fight'.$fight_nr.'-'.preg_replace('/\s/', '', $_char).'-damage',
+                        $char,
+                        $fight_start_id,
+                        $fight_end_id
+                    );
+                $benchmark->snapshot('fight_'.$fight_nr.'_tab_1');
+                $tabs[] = new Tab_Char_DpsTps_per_Ability(
+                        'fight'.$fight_nr.'-'.preg_replace('/\s/', '', $_char).'-dmgthreatabilities',
+                        $char,
+                        $fight_start_id,
+                        $fight_end_id
+                    );
+                $benchmark->snapshot('fight_'.$fight_nr.'_tab_2');
+                $tabs[] = new Tab_Char_HpsTps_per_Ability(
+                        'fight'.$fight_nr.'-'.preg_replace('/\s/', '', $_char).'-healthreatabilities',
+                        $char,
+                        $fight_start_id,
+                        $fight_end_id
+                    );
+                $benchmark->snapshot('fight_'.$fight_nr.'_tab_3');
+                $tabs[] = new Tab_Enemies_Damage_to_Char(
+                        'fight'.$fight_nr.'-enemies-vs-'.preg_replace('/\s/', '', $_char).'-sources',
+                        $char,
+                        $fight_start_id,
+                        $fight_end_id
+                    );
+                $benchmark->snapshot('fight_'.$fight_nr.'_tab_4');
+                $tabs[] = new Tab_Full_Fight_Stats(
+                        'fight'.$fight_nr.'-'.$_char.'-fullfight-stats',
+                        $char,
+                        $fight_start_id,
+                        $fight_end_id
+                    );
+                $benchmark->snapshot('fight_'.$fight_nr.'_tab_5');
+                $tabs[] = new Tab_Full_Fight_Graphs(
+                        'fight'.$fight_nr.'-'.$_char.'-fullfight-graphs',
+                        $char,
+                        $fight_start_id,
+                        $fight_end_id
+                    );
+                $benchmark->snapshot('fight_'.$fight_nr.'_tab_6');
+                // Daten in Tabs ausgeben
+    
+                // Dauer lesbar machen
+                $__time = $single_fight_duration;
+                $hours = floor($__time / (60*60));
+                $__time = $__time - $hours * (60*60);
+                $minutes = floor($__time / (60));
+                $__time = $__time - $minutes * 60;
+                $seconds = $__time;
 
-            $summary_title  = "Alle Kämpfe (".$fights_displayed."): ";
-            $summary_title .= "Dauer ".seconds_to_readable($summary_duration)." (aktiv), ";
-            if($summary_duration) {
-                $summary_title .= "am ".date('d.m.', $min_timestamp)." zwischen ".date('H:i:s', $min_timestamp)." und ".date('H:i:s', $max_timestamp);
-                $summary_title .= " [".round($summary_damage / $summary_duration, 2)." DPS ";
-                $summary_title .= "| ".round($summary_threat / $summary_duration, 2)." TPS ";
-                $summary_title .= "| ".round($summary_healed / $summary_duration, 2)." HPS ] ";
-                if($summary_damage>0) {
-                    $summary_title .= $summary_damage." Schaden verursacht, ";
+                $fight_title  = "Kampf ".$fight_nr;
+                $fight_title .= ": Dauer ".sprintf('%s:%02s:%02s',$hours,$minutes,$seconds).", ";
+                $fight_title .= "am ".date('d.m.', $fight_start_timestamp)." von ".date('H:i:s', $fight_start_timestamp)." bis ".date('H:i:s', $fight_end_timestamp);
+                $fight_title .= " [".round($fight['sum']['damage'] / $single_fight_duration, 2)." DPS ";
+                $fight_title .= "| ".round($fight['sum']['threat'] / $single_fight_duration, 2)." TPS ";
+                $fight_title .= "| ".round($fight['sum']['healed'] / $single_fight_duration, 2)." HPS ] ";
+                if($fight['sum']['damage']>0) {
+                    $fight_title .= $fight['sum']['damage']." Schaden verursacht, ";
                 }
-                if($summary_healed>0) {
-                    $summary_title .= $summary_healed." Punkte geheilt, ";
+                if($fight['sum']['healed']>0) {
+                    $fight_title .= $fight['sum']['healed']." Punkte geheilt, ";
                 }
-                $summary_title .= $summary_threat." Bedrohung erzeugt.";
-            }
-            
-            $output_accordion_page .= "<h3><a href='#'>".$summary_title."</a></h3>
-                <div>
+                $fight_title .= $fight['sum']['threat']." Bedrohung erzeugt.";
+
+                print "<h3><a href='#'>".$fight_title."</a></h3>
                     <div>
                         <div class='tabs'>
                             <ul>";
                                 foreach($tabs as $tab) {
-                                    $output_accordion_page .= eval('$t = new '.$tab.'("sum-'.$tab.'", "'.$char.'", '.$min_id.', '.$max_id.'); return $t->nameplate();');
+                                    print $tab->nameplate();
                                 }
-                    $output_accordion_page .= " </ul>";
+                                // $output_accordion_page .= "<li><a href='ajax_tab.php?tab=Tab_DpsHpsTps_per_Target&char=".$char."&min_id=".$fight['start_id']."&max_id=".$fight['end_id']."'>bla</a></li>";
+                print "     </ul>";
 
-                    foreach($tabs as $tab) {
-                        $output_accordion_page .= eval('$t = new '.$tab.'("sum-'.$tab.'", "'.$char.'", '.$min_id.', '.$max_id.'); return $t->tabcontent();');
-                    }
-            $output_accordion_page .= "</div>
-                </div>
-            </div>";
-
-            $output_accordion_page .= "</div>"; // empty div that fixes accordion width bug
-            $output_accordion_page .= "</div>"; // accordion
-        } // if $duration > 0
-        
-        if($fights_hidden + $fights_displayed > 0) {
-            $output_accordion_page = "<h2><a name='stats_for_".$_char."'>Damagestats für ".$char." (".$fights_displayed." ".($fights_displayed==1?"Kampf":"Kämpfe")." angezeigt, ".$fights_hidden." versteckt)</a></h2>
-                    <div> <!-- empty div that fixes accordion width bug -->
-                        <div class='accordion'>".$output_accordion_page;
-            print $output_accordion_page;
+                foreach($tabs as $tab) {
+                    print $tab->tabcontent();
+                    print flushandcache();
+                }
+                print "</div>
+                    </div>";
+                    
+                // collect data for summary tab
+                $summary_duration += $single_fight_duration;
+                $summary_damage += $fight['sum']['damage'];
+                $summary_threat += $fight['sum']['threat'];
+                $summary_healed += $fight['sum']['healed'];
+                
+                $benchmark->snapshot('fight_'.$fight_nr.'_printed');
+            } else {
+                $fights_hidden++;
+            }
         }
+
+        // Gesamt
+        if($fights_displayed<1 && $fight_nr>0) {
+            print "Tipp: Wenn keine einzelnen Kämpfe angezeigt werden, dann prüfe ob du in den Optionen eine zu hohe Mindest-Kampfdauer gewählt hast.";
+        }
+
+        $tabs = array();
+        $benchmark->snapshot('before_summary');
+        
+        // regarding the eval bullshit below:
+        //   I'd rather put all tabs into an array to loop thru and call their nameplate and tabcontent methods
+        //   but doing so eats memory. lots.
+        //   using eval frees memory used by each tab object immediately
+        $tabs = array('Tab_DpsHpsTps_per_Target', 'Tab_Char_DpsTps_per_Ability', 'Tab_Char_HpsTps_per_Ability', 'Tab_Enemies_Damage_to_Char', 'Tab_Full_Fight_Stats', 'Tab_Full_Fight_Graphs');
+        //$tabs = array('Tab_DpsHpsTps_per_Target', 'Tab_Char_DpsTps_per_Ability', 'Tab_Char_HpsTps_per_Ability', 'Tab_Enemies_Damage_to_Char');
+
+        $summary_title  = "Alle Kämpfe (".$fights_displayed."): ";
+        $summary_title .= "Dauer ".seconds_to_readable($summary_duration)." (aktiv), ";
+        if($summary_duration) {
+            $summary_title .= "am ".date('d.m.', $min_timestamp)." zwischen ".date('H:i:s', $min_timestamp)." und ".date('H:i:s', $max_timestamp);
+            $summary_title .= " [".round($summary_damage / $summary_duration, 2)." DPS ";
+            $summary_title .= "| ".round($summary_threat / $summary_duration, 2)." TPS ";
+            $summary_title .= "| ".round($summary_healed / $summary_duration, 2)." HPS ] ";
+            if($summary_damage>0) {
+                $summary_title .= $summary_damage." Schaden verursacht, ";
+            }
+            if($summary_healed>0) {
+                $summary_title .= $summary_healed." Punkte geheilt, ";
+            }
+            $summary_title .= $summary_threat." Bedrohung erzeugt.";
+        }
+        
+        unset($parser->logdata);
+        $parser->read_loglines();
+        $parser->gather_logdata();
+        unset($parser->loglines);
+        
+        $tabs = array();
+        $tabs[] = new Tab_DpsHpsTps_per_Target(
+                'sum-'.preg_replace('/\s/', '', $_char).'-damage',
+                $char,
+                $min_id,
+                $max_id
+            );
+        
+        unset($parser->logdata);
+        $parser->read_loglines();
+        $parser->gather_logdata();
+        unset($parser->loglines);
+        $tabs[] = new Tab_Char_DpsTps_per_Ability(
+                'sum-'.preg_replace('/\s/', '', $_char).'-dmgthreatabilities',
+                $char,
+                $min_id,
+                $max_id
+            );
+        
+        unset($parser->logdata);
+        $parser->read_loglines();
+        $parser->gather_logdata();
+        unset($parser->loglines);
+        $tabs[] = new Tab_Char_HpsTps_per_Ability(
+                'sum-'.preg_replace('/\s/', '', $_char).'-healthreatabilities',
+                $char,
+                $min_id,
+                $max_id
+            );
+        unset($parser->logdata);
+        $parser->read_loglines();
+        $parser->gather_logdata();
+        unset($parser->loglines);
+        $tabs[] = new Tab_Enemies_Damage_to_Char(
+                'sum-enemies-vs-'.preg_replace('/\s/', '', $_char).'-sources',
+                $char,
+                $min_id,
+                $max_id
+            );
+       
+        print "<h3><a href='#'>".$summary_title."</a></h3>
+            <div>
+                <div>
+                    <div class='tabs'>
+                        <ul>";
+                            foreach($tabs as $tab) {
+                                $benchmark->snapshot($tab->name);
+                                print $tab->nameplate();
+                            }
+                print " </ul>";
+                
+                foreach($tabs as $tab) {
+                    print $tab->tabcontent();
+                    print flushandcache();
+                }
+                print "</div>
+            </div>
+        </div>";
+        unset($tabs);
+
+        print "</div>"; // empty div that fixes accordion width bug
+        print "</div>"; // accordion
+        
     } // foreach $char
     print "</div>"; // accordion
 
+    sql_logout();
+    unset($guil);
+    unset($output_accordion_page);
+    unset($parser);
     $benchmark->snapshot('sum_printed');
 
     endofpage();
@@ -842,7 +840,11 @@
     }
 
     function pixelmap($start_id, $end_id, $section, $snd_sections, $char, $conditions, $eventtext=1, $dim_x=1500, $dim_y=300) {
-        global $cacherenew, $logdata;
+        global $cacherenew;
+        
+        $parser = new Parser($logfiles[$_SESSION['log_id']]['filename'], $_SESSION['log_id']);
+        $parser->read_loglines($_GET['min_id'], $_GET['max_id']);
+        $parser->gather_logdata();
 
         $cache_filename = cachefilename_pixelmap($start_id, $end_id, $section, $snd_sections, $char, $conditions, $eventtext, $dim_x, $dim_y);
         if(file_exists($cache_filename) && !$cacherenew==1) {
@@ -866,16 +868,24 @@
         $min_y = 0;
         $max_y = 0;
         $max_y_overall = 0;
-        for($id=$start_id; $id<=$end_id; $id++) {
+        $last_fetch = $start_id;
+        for($id=$start_id; $id <= $end_id; $id++) {
+            if($id >= $last_fetch + PARSER_MAX_FETCH) {
+                $last_fetch +=PARSER_MAX_FETCH;
+                unset($parser->loglines);
+                unset($parser->logdata);
+                $parser->read_loglines($id, $id+PARSER_MAX_FETCH);
+                $parser->gather_logdata();
+            }
             $conditions_complied=1;
             foreach($conditions as $lvalue => $rvalue) {
                 if($rvalue == $char) {
-                    if(!preg_match('/^'.$char.'(:.+)?/', $logdata[$id][$lvalue])) {
+                    if(!preg_match('/^'.$char.'(:.+)?/', $parser->logdata[$id][$lvalue])) {
                         $conditions_complied=0;
                         break;
                     }
                 } else {
-                    if($logdata[$id][$lvalue]!=$rvalue) {
+                    if($parser->logdata[$id][$lvalue]!=$rvalue) {
                         $conditions_complied=0;
                         break;
                     }
@@ -883,11 +893,11 @@
             }
             if($conditions_complied) {
                 switch($section_operation) {
-                    case "+": $line_value = $logdata[$id][$section_factor1] + $logdata[$id][$section_factor2]; break;
-                    case "-": $line_value = $logdata[$id][$section_factor1] - $logdata[$id][$section_factor2]; break;
-                    case "*": $line_value = $logdata[$id][$section_factor1] * $logdata[$id][$section_factor2]; break;
-                    case "/": $line_value = $logdata[$id][$section_factor1] / $logdata[$id][$section_factor2]; break;
-                    default:  $line_value = $logdata[$id][$section];
+                    case "+": $line_value = $parser->logdata[$id][$section_factor1] + $parser->logdata[$id][$section_factor2]; break;
+                    case "-": $line_value = $parser->logdata[$id][$section_factor1] - $parser->logdata[$id][$section_factor2]; break;
+                    case "*": $line_value = $parser->logdata[$id][$section_factor1] * $parser->logdata[$id][$section_factor2]; break;
+                    case "/": $line_value = $parser->logdata[$id][$section_factor1] / $parser->logdata[$id][$section_factor2]; break;
+                    default:  $line_value = $parser->logdata[$id][$section];
                 }
                 if($s1overall) {
                     $max_y_overall = $max_y_overall + $line_value;
@@ -926,7 +936,7 @@
             foreach($conditions as $lvalue => $rvalue) {
                 $title .= " ".$lvalue."=".$rvalue;
             }
-            $title .= " [".date('H:i:s', $logdata[$start_id]['timestamp'])." - ".date('H:i:s', $logdata[$end_id]['timestamp'])."]";
+            $title .= " [".date('H:i:s', $parser->logdata[$start_id]['timestamp'])." - ".date('H:i:s', $parser->logdata[$end_id]['timestamp'])."]";
             imagestring($image, 5, $x_offset+2, $dim_y-$y_offset+15, $title, $color[$section]);
             // rulers
             imageline($image, 0, $dim_y-$y_offset,     $dim_x, $dim_y-$y_offset,  $color['black']);
@@ -975,20 +985,30 @@
                     $draw_section_factor2 = $matches[3];
                 }
             
-                for($id=$start_id; $id<=$end_id; $id++) {
+                $last_fetch = $start_id;
+                $parser->read_loglines($start_id, $end_id);
+                $parser->gather_logdata();
+                for($id=$start_id; $id <= $end_id; $id++) {
+                    if($id >= $last_fetch + PARSER_MAX_FETCH) {
+                        $last_fetch +=PARSER_MAX_FETCH;
+                        unset($parser->loglines);
+                        unset($parser->logdata);
+                        $parser->read_loglines($id, $id+PARSER_MAX_FETCH);
+                        $parser->gather_logdata();
+                    }
                     $conditions_complied=1;
                     foreach($conditions as $lvalue => $rvalue) {
-                        if($logdata[$id][$lvalue]!=$rvalue) {
+                        if($parser->logdata[$id][$lvalue]!=$rvalue) {
                             $conditions_complied=0;
                             break;
                         }
                     }
                     switch($draw_section_operation) {
-                        case "+": $line_value[$id] = $logdata[$id][$draw_section_factor1] + $logdata[$id][$draw_section_factor2]; break;
-                        case "-": $line_value[$id] = $logdata[$id][$draw_section_factor1] - $logdata[$id][$draw_section_factor2]; break;
-                        case "*": $line_value[$id] = $logdata[$id][$draw_section_factor1] * $logdata[$id][$draw_section_factor2]; break;
-                        case "/": $line_value[$id] = $logdata[$id][$draw_section_factor1] / $logdata[$id][$draw_section_factor2]; break;
-                        default:  $line_value[$id] = $logdata[$id][$draw_section];
+                        case "+": $line_value[$id] = $parser->logdata[$id][$draw_section_factor1] + $parser->logdata[$id][$draw_section_factor2]; break;
+                        case "-": $line_value[$id] = $parser->logdata[$id][$draw_section_factor1] - $parser->logdata[$id][$draw_section_factor2]; break;
+                        case "*": $line_value[$id] = $parser->logdata[$id][$draw_section_factor1] * $parser->logdata[$id][$draw_section_factor2]; break;
+                        case "/": $line_value[$id] = $parser->logdata[$id][$draw_section_factor1] / $parser->logdata[$id][$draw_section_factor2]; break;
+                        default:  $line_value[$id] = $parser->logdata[$id][$draw_section];
                     }
                     if($line_value>0 && $conditions_complied) {
                         if($s2overall) {
@@ -1020,15 +1040,25 @@
             
             // events
             $t=0;
-            for($id=$start_id; $id<=$end_id; $id++) {
-                switch($logdata[$id]['effect_id']) {
+            $last_fetch = $start_id;
+            $parser->read_loglines($start_id, $end_id);
+            $parser->gather_logdata();
+            for($id=$start_id; $id <= $end_id; $id++) {
+                if($id >= $last_fetch + PARSER_MAX_FETCH) {
+                    $last_fetch +=PARSER_MAX_FETCH;
+                    unset($parser->loglines);
+                    unset($parser->logdata);
+                    $parser->read_loglines($id, $id+PARSER_MAX_FETCH);
+                    $parser->gather_logdata();
+                }
+                switch($parser->logdata[$id]['effect_id']) {
                     case DEATH:
-                        if($logdata[$id]['target_name'] == $char) {
+                        if($parser->logdata[$id]['target_name'] == $char) {
                             // char dead
                             // x
-                            imagestring($image, 3, $x_offset + ($t*$x_faktor) - 2+$x_faktor, ($dim_y - $y_offset - $logdata[$id][$section] * $y_faktor), 'X', $color['red']);
+                            imagestring($image, 3, $x_offset + ($t*$x_faktor) - 2+$x_faktor, ($dim_y - $y_offset - $parser->logdata[$id][$section] * $y_faktor), 'X', $color['red']);
                             // dashed line
-                            imagedashedline($image, $x_offset + ($t*$x_faktor)+$x_faktor, ($dim_y - $y_offset - $logdata[$id][$section] * $y_faktor) ,
+                            imagedashedline($image, $x_offset + ($t*$x_faktor)+$x_faktor, ($dim_y - $y_offset - $parser->logdata[$id][$section] * $y_faktor) ,
                                                     $x_offset + ($t*$x_faktor)+$x_faktor, ($dim_y - $y_offset), $color['red']);
                             if($eventtext==1) {
                                 // char name
@@ -1036,14 +1066,14 @@
                                 if($x_position > $dim_x - 40) {
                                     $x_position -= 40;
                                 }
-                                imagestring($image, 1, $x_position, ($dim_y - $y_offset - 13), $logdata[$id]['target_name'], $color['red']);
+                                imagestring($image, 1, $x_position, ($dim_y - $y_offset - 13), $parser->logdata[$id]['target_name'], $color['red']);
                             }
-                        } elseif($logdata[$id]['source_name'] == $char) {
+                        } elseif($parser->logdata[$id]['source_name'] == $char) {
                             // npc dead
                             // x
-                            imagestring($image, 3, $x_offset + ($t*$x_faktor) - 2 +$x_faktor, ($dim_y - $y_offset - $logdata[$id][$section] * $y_faktor - 9), 'x', $color['black']);
+                            imagestring($image, 3, $x_offset + ($t*$x_faktor) - 2 +$x_faktor, ($dim_y - $y_offset - $parser->logdata[$id][$section] * $y_faktor - 9), 'x', $color['black']);
                             // dashed line
-                            imagedashedline($image, $x_offset + ($t*$x_faktor)+$x_faktor, ($dim_y - $y_offset - $logdata[$id][$section] * $y_faktor) ,
+                            imagedashedline($image, $x_offset + ($t*$x_faktor)+$x_faktor, ($dim_y - $y_offset - $parser->logdata[$id][$section] * $y_faktor) ,
                                                     $x_offset + ($t*$x_faktor)+$x_faktor, ($dim_y - $y_offset), $color['black']);
                             if($eventtext==1) {
                                 // npc name
@@ -1051,7 +1081,7 @@
                                 if($x_position > $dim_x - 40) {
                                     $x_position -= 40;
                                 }
-                                imagestring($image, 1, $x_position, ($dim_y - $y_offset - 13), $logdata[$id]['target_name'], $color['black']);
+                                imagestring($image, 1, $x_position, ($dim_y - $y_offset - 13), $parser->logdata[$id]['target_name'], $color['black']);
                             }
                         }
                 }
@@ -1148,22 +1178,14 @@
     }
 
     function endofpage() {
-        global $cache_stats_filename, $openOptions, $duration, $logfiles, $benchmark;
+        global $cache_stats_filename, $openOptions, $logfiles, $benchmark;
 
         include("footer.php");
 
-        $html = ob_get_clean();
-        $html = preg_replace('/&/', '&amp;', $html);
-        if($cache_stats_filename) {
-            if($cache_handle = fopen($cache_stats_filename, 'w')) {
-                fwrite($cache_handle, $html);
-                fclose($cache_handle);
-            }
-        }
-        print $html;
+        print flushandcache();
 
         $benchmark->snapshot('endofpage');
-        $benchmark->summary('benchmarks');
+        $benchmark->summary();
         if($fh = fopen('benchmarks-size2mem', 'a')) {
             $filename = $logfiles[$_SESSION['log_id']]['filename'];
             $file_size = filesize($filename);
@@ -1175,5 +1197,23 @@
             fclose($fh);
         }
         exit();
+    }
+    
+    function flushandcache($first=0) {
+        global $cache_stats_filename;
+        
+        $mode = 'a';
+        if($first) {
+            $mode = 'w';
+        }
+
+        $html = ob_get_flush();
+        if($cache_stats_filename) {
+            if($cache_handle = fopen($cache_stats_filename, $mode)) {
+                fwrite($cache_handle, $html);
+                fclose($cache_handle);
+            }
+        }
+        ob_start();
     }
 ?>

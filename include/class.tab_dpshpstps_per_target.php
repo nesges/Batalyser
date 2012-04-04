@@ -1,40 +1,58 @@
 <?
     class Tab_DpsHpsTps_per_Target extends Tab {
         function Tab_DpsHpsTps_per_Target($name, $char, $start_id, $end_id) {
-            global $logdata;
-            
+            global $parser;
+
             $targets = array();
-            for($id=$start_id; $id<=$end_id; $id++) {
-                if(preg_match('/^'.$char.'(:.+)?/', $logdata[$id]['source_name'])) {
-                    $target_name = $logdata[$id]['target_name'];
-                    switch($logdata[$id]['effect_id']) {
+            $last_fetch = $start_id;
+            for($id=$start_id; $id <= $end_id; $id++) {
+                if($id >= $last_fetch + PARSER_MAX_FETCH) {
+                    $last_fetch +=PARSER_MAX_FETCH;
+                    unset($parser->loglines);
+                    unset($parser->logdata);
+                    $parser->read_loglines($id, $id+PARSER_MAX_FETCH);
+                    $parser->gather_logdata($id, $id+PARSER_MAX_FETCH);
+                }
+                $logdata = $parser->logdata[$id];
+                if($id == $start_id) {
+                    $start_timestamp = $logdata['timestamp'];
+                } elseif ($id == $end_id) {
+                    $end_timestamp = $logdata['timestamp'];
+                }
+
+                if(preg_match('/^'.$char.'(:.+)?/', $logdata['source_name'])) {
+                    $target_name = $logdata['target_name'];
+                    switch($logdata['effect_id']) {
                         case HEAL:
-                            $targets[$target_name]['healed'] += $logdata[$id]['hitpoints'];
+                            $targets[$target_name]['healed'] += $logdata['hitpoints'];
                             break;
                         case DAMAGE:
-                            $targets[$target_name]['damage'] += $logdata[$id]['hitpoints'];
+                            $targets[$target_name]['damage'] += $logdata['hitpoints'];
                     }
-                    $targets[$target_name]['threat'] += $logdata[$id]['threat'];
-                    $targets[$target_name]['target_type'] = $logdata[$id]['target_type'];
+                    $targets[$target_name]['threat'] += $logdata['threat'];
+                    $targets[$target_name]['target_type'] = $logdata['target_type'];
                 }
+                // unset($logdata);
             }
-            
+
             $data = '';
-            $duration = $logdata[$end_id]['timestamp'] - $logdata[$start_id]['timestamp'];
-            foreach($targets as $target_name => $target) {
-                if($target['target_type'] == 'companion') {
-                    $target_name = preg_replace('/'.$char.':/', '', $target_name).' (Companion)';
-                }
-                if($target['damage']>0 || $target['healed']>0 || $target['threat']>0) {
-                    $data .= "<tr>
-                            <td>".$target_name."</td>
-                            <td>".$target['damage']."</td>
-                            <td>".$target['healed']."</td>
-                            <td>".$target['threat']."</td>
-                            <td>".round($target['damage'] / $duration, 2)."</td>
-                            <td>".round($target['healed'] / $duration, 2)."</td>
-                            <td>".round($target['threat'] / $duration, 2)."</td>
-                        </tr>";
+            $duration = $end_timestamp - $start_timestamp;
+            if($duration) {
+                foreach($targets as $target_name => $target) {
+                    if($target['target_type'] == 'companion') {
+                        $target_name = preg_replace('/'.$char.':/', '', $target_name).' (Companion)';
+                    }
+                    if($target['damage']>0 || $target['healed']>0 || $target['threat']>0) {
+                        $data .= "<tr>
+                                <td>".$target_name."</td>
+                                <td>".$target['damage']."</td>
+                                <td>".$target['healed']."</td>
+                                <td>".$target['threat']."</td>
+                                <td>".round($target['damage'] / $duration, 2)."</td>
+                                <td>".round($target['healed'] / $duration, 2)."</td>
+                                <td>".round($target['threat'] / $duration, 2)."</td>
+                            </tr>";
+                    }
                 }
             }
 

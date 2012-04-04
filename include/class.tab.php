@@ -23,6 +23,17 @@
                 $this->class = $class;
             }
         }
+        
+        function load_logdata($start_id, $end_id) {
+            global $parser;
+
+            $parser->read_loglines($start_id, $end_id);
+            $parser->gather_logdata();
+            unset($parser->loglines);
+            
+            return $parser->logdata;
+        }
+        
 
         function nameplate() {
             if($this->data || $this->html) {

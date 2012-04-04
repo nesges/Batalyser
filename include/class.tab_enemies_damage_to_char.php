@@ -2,26 +2,42 @@
     class Tab_Enemies_Damage_to_Char extends Tab {
         
         function Tab_Enemies_Damage_to_Char($name, $char, $start_id, $end_id) {
-            global $logdata;
+            global $parser;
             
             $enemies = array();
             $enemies_abilities = array();
             $overall = array();
-            for($id=$start_id; $id<=$end_id; $id++) {
-                if($logdata[$id]['target_name'] == $char) {
-                    $enemy_name = $logdata[$id]['source_name'];
-                    $ability_name = $logdata[$id]['ability_name'];
-                    switch($logdata[$id]['effect_id']) {
+            $last_fetch = $start_id;
+            for($id=$start_id; $id <= $end_id; $id++) {
+                if($id >= $last_fetch + PARSER_MAX_FETCH) {
+                    $last_fetch +=PARSER_MAX_FETCH;
+                    unset($parser->loglines);
+                    unset($parser->logdata);
+                    $parser->read_loglines($id, $id+PARSER_MAX_FETCH);
+                    $parser->gather_logdata($id, $id+PARSER_MAX_FETCH);
+                }
+                $logdata = $parser->logdata[$id];
+                
+                if($id == $start_id) {
+                    $start_timestamp = $logdata['timestamp'];
+                } elseif ($id == $end_id) {
+                    $end_timestamp = $logdata['timestamp'];
+                }
+
+                if($logdata['target_name'] == $char) {
+                    $enemy_name = $logdata['source_name'];
+                    $ability_name = $logdata['ability_name'];
+                    switch($logdata['effect_id']) {
                         case DAMAGE:
                             $enemies[$enemy_name]['attack_count']++;
-                            $enemies[$enemy_name]['damage'] += $logdata[$id]['hitpoints'];
-                            $enemies[$enemy_name]['threat'] += $logdata[$id]['threat'];
-                            $overall['damage'] += $logdata[$id]['hitpoints'];
-                            $overall['threat'] += $logdata[$id]['threat'];
+                            $enemies[$enemy_name]['damage'] += $logdata['hitpoints'];
+                            $enemies[$enemy_name]['threat'] += $logdata['threat'];
+                            $overall['damage'] += $logdata['hitpoints'];
+                            $overall['threat'] += $logdata['threat'];
             
                             $enemies_abilities[$enemy_name][$ability_name]['count']++;
-                            $enemies_abilities[$enemy_name][$ability_name]['damage'] += $logdata[$id]['hitpoints'];
-                            $enemies_abilities[$enemy_name][$ability_name]['threat'] += $logdata[$id]['threat'];
+                            $enemies_abilities[$enemy_name][$ability_name]['damage'] += $logdata['hitpoints'];
+                            $enemies_abilities[$enemy_name][$ability_name]['threat'] += $logdata['threat'];
                             break;
                     }
                 }
@@ -29,7 +45,7 @@
             
             if(count($enemies) > 0) {
                 $html = "<div class='accordion'>";
-                $duration = $logdata[$end_id]['timestamp'] - $logdata[$start_id]['timestamp'];
+                $duration = $end_timestamp - $start_timestamp;
                 foreach($enemies as $enemy_name => $enemy) {
                     $html .= "<h4><a href='#'>".$enemy_name." (".$enemy['damage']." Damage, ".round($enemy['damage'] / $duration, 2)." DPS)</a></h4>
                             <div>

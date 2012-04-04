@@ -1,6 +1,6 @@
 <?
     global $version;
-    $version = "0.3";
+    $version = "0.4";
 
     // effect_id
     define('DEATH',         '836045448945493');

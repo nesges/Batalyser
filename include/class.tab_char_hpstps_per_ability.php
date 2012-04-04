@@ -2,37 +2,53 @@
     class Tab_Char_HpsTps_per_Ability extends Tab {
         
         function Tab_Char_HpsTps_per_Ability($name, $char, $start_id, $end_id) {
-            global $logdata;
+            global $parser;
+            //$logdata = parent::load_logdata($start_id, $end_id);
             
             $data = '';
             $html = '';
 
             $used_abilities = array();
             $overall = array();
-            for($id=$start_id; $id<=$end_id; $id++) {
-                if(preg_match('/^'.$char.'(:.+)?/', $logdata[$id]['source_name'])) {
-                    $ability_name = $logdata[$id]['ability_name'];
-                    if($logdata[$id]['source_type'] == 'companion') {
+            $last_fetch = $start_id;
+            for($id=$start_id; $id <= $end_id; $id++) {
+                if($id >= $last_fetch + PARSER_MAX_FETCH) {
+                    $last_fetch +=PARSER_MAX_FETCH;
+                    unset($parser->loglines);
+                    unset($parser->logdata);
+                    $parser->read_loglines($id, $id+PARSER_MAX_FETCH);
+                    $parser->gather_logdata($id, $id+PARSER_MAX_FETCH);
+                }
+                $logdata = $parser->logdata[$id];
+                if($id == $start_id) {
+                    $start_timestamp = $logdata['timestamp'];
+                } elseif ($id == $end_id) {
+                    $end_timestamp = $logdata['timestamp'];
+                }
+
+                if(preg_match('/^'.$char.'(:.+)?/', $logdata['source_name'])) {
+                    $ability_name = $logdata['ability_name'];
+                    if($logdata['source_type'] == 'companion') {
                         $ability_name = $matches[2].': '.$ability_name;
                     }
-                    switch($logdata[$id]['effect_id']) {
+                    switch($logdata['effect_id']) {
                         case HEAL:
-                            $used_abilities[$ability_name]['heal'] += $logdata[$id]['hitpoints'];
-                            $used_abilities[$ability_name]['threat'] += $logdata[$id]['threat'];
-                            $used_abilities[$ability_name]['hit'] += $logdata[$id]['hit'];
-                            $used_abilities[$ability_name]['crit'] += $logdata[$id]['crit'];
+                            $used_abilities[$ability_name]['heal'] += $logdata['hitpoints'];
+                            $used_abilities[$ability_name]['threat'] += $logdata['threat'];
+                            $used_abilities[$ability_name]['hit'] += $logdata['hit'];
+                            $used_abilities[$ability_name]['crit'] += $logdata['crit'];
                             $used_abilities[$ability_name]['count']++;
             
-                            $overall['heal'] += $logdata[$id]['hitpoints'];
-                            $overall['threat'] += $logdata[$id]['threat'];
-                            $overall['hit'] += $logdata[$id]['hit'];
-                            $overall['crit'] += $logdata[$id]['crit'];
+                            $overall['heal'] += $logdata['hitpoints'];
+                            $overall['threat'] += $logdata['threat'];
+                            $overall['hit'] += $logdata['hit'];
+                            $overall['crit'] += $logdata['crit'];
                             $overall['count']++;
                     }
                 }
             }
             
-            $duration = $logdata[$end_id]['timestamp'] - $logdata[$start_id]['timestamp'];
+            $duration = $end_timestamp - $start_timestamp;
             if($overall['count']>0) {
                 foreach($used_abilities as $ability_name => $ability) {
                     $data .= "<tr>
