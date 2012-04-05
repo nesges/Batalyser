@@ -9,8 +9,19 @@
     
     global $guil, $version;
 
+    // user_id=1 is our demo-user
+    $demo = 0;
+    if($_SESSION['user_id']==1) {
+        $demo = 1;
+    }
+    // user_id=2 is Marduc
+    $admin = 0;
+    if($_SESSION['user_id']==2) {
+        $admin = 1;
+    }
+
     // debug for user Marduc only
-    if($_SESSION['user_id'] == 2) {
+    if($admin) {
         // error_reporting(E_ALL);
     }
 
@@ -36,7 +47,7 @@
 
     // limit upload to 524288 Bytes (512kB) / 1048576 Bytes (1MB)
     // in the upload form there are additional mentions of MAX_FILE_SIZE
-    define("MAX_FILE_SIZE", 1048576);
+    define("MAX_FILE_SIZE", 1048576*3);
     ini_set("upload_max_filesize", MAX_FILE_SIZE);
     ini_set("post_max_size", MAX_FILE_SIZE);
 
@@ -44,13 +55,11 @@
     $languages['en'] = 'Englisch';
     $languages['fr'] = 'Französisch';
     $languages['other'] = 'Andere';
-
-    // user_id=1 is our demo-user
+    
     $disable_ui_element="";
-    if($_SESSION['user_id']==1) {
+    if($demo) {
         $disable_ui_element = "disabled='disabled'";
     }
-
 
     $op="";
     if(isset($_POST['op'])) {
@@ -116,12 +125,10 @@
                 } else {
                     $logrange = $_SESSION['min_logrange'].'-'.$_SESSION['max_logrange'];
                 }
-                $cache_stats_filename = 'cache/stats_'.$_SESSION['user_id'].'_'.$_SESSION['log_id'].'_'.$_SESSION['min_fight_duration'].'_'.$_SESSION['language'].'_'.$logrange;
-                if(file_exists($cache_stats_filename) && !$cacherenew==1) {
-                    readfile($cache_stats_filename);
-                    exit();
-                }
             }
+            break;
+        case "noop":
+            unset($_SESSION['log_id']);
             break;
         case "session_reset":
             $_SESSION = array();
@@ -154,20 +161,44 @@
             unset($t_hasher);
             break;
         case "logdelete":
-            if($_SESSION['user_id'] != 1) {
+            if(!$demo) {
                 $log_id_list = join(',', $_POST['delete_logfile']);
+                // check for user_id
+                $res = sql_query("select id, filename from logfile where id in (".$log_id_list.")
+                    and uploader_id = ".$_SESSION['user_id']);
+                while(list($id, $filename) = sql_fetch_row($res)) {
+                    $delete_ids[] = $id;
+                    @unlink('cache/serialized_parser_'.$id.'_'.$version);
+                    foreach(glob("cache/accordion_*".$id."_*") as $cache_file) {
+                        @unlink($cache_file);
+                    }
+                    foreach(glob("cache/pixelmap_*".$id."_*") as $cache_file) {
+                        @unlink($cache_file);
+                    }
+                    @unlink($filename);
+                }
+                $log_id_list = join(',', $delete_ids);
                 sql_query("delete from logfile
-                    where id in (".$log_id_list.")
-                        and uploader_id = ".$_SESSION['user_id']);
+                    where id in (".$log_id_list.")");
                 sql_query("delete from data
-                    where logfile_id in (".$log_id_list.")
-                        and uploader_id = ".$_SESSION['user_id']);
+                    where logfile_id in (".$log_id_list.")");
                 $_SESSION['log_id']=0;
             }
-            header("Location: ".$_SERVER['PHP_SELF']."?options=1");
+            header("Location: ".$_SERVER['PHP_SELF']."?logfile=&options=1");
+            exit();
+        case "logdownload":
+            $res = sql_query("select filename from logfile where id=".$_GET['logfile']);
+            list($filename) = sql_fetch_row($res);
+            header("Expires: 0"); 
+            header("Cache-Control: must-revalidate, post-check=0, pre-check=0"); 
+            header("Content-Type: application/force-download"); 
+            header("Content-Description: File Transfer"); 
+            header("Content-Disposition: attachment; filename=".$filename); 
+            header("Content-Transfer-Encoding: binary"); 
+            readfile($filename);
             exit();
         case "logupload":
-            if($_SESSION['user_id'] && $_SESSION['user_id']!=1) {
+            if($_SESSION['user_id'] && !$demo) {
                 if($_FILES['logfile']['tmp_name']) {
                     @mkdir('upload/'.$_SESSION['user_id']);
                     $filename = 'upload/'.$_SESSION['user_id'].'/'.basename($_FILES['logfile']['name']);
@@ -248,7 +279,6 @@
                                 }
                                 unset($parser->hit_types);
                             }
-                            $parser->serialize_self();
                             header("Location: ".$_SERVER['PHP_SELF']."?op=setopt");
                             exit();
                         }
@@ -295,17 +325,18 @@
         // select users logfiles
         $res = sql_query("select id, UNIX_TIMESTAMP(timestamp), notes, filename, uploader_id
             from logfile
-            where uploader_id = ".$_SESSION['user_id']."
+            where (
+                uploader_id = ".$_SESSION['user_id']."
+                or id = '".$_SESSION['log_id']."'
+            )
             order by timestamp desc");
         while(list($id, $timestamp, $notes, $filename, $uploader_id) = sql_fetch_row($res)) {
-            if(file_exists($filename)) {
+            // if(file_exists($filename)) {
                 $logfiles[$id]['timestamp'] = $timestamp;
                 $logfiles[$id]['notes'] = $notes;
                 $logfiles[$id]['filename'] = $filename;
                 $logfiles[$id]['uploader_id'] = $uploader_id;
-            } else {
-                sql_query("delete from logfile where id=".$id);
-            }
+            // }
         }
     }
     
@@ -354,7 +385,7 @@
 
     if($errormessage) {
         if(!$errormessage_returnto) {
-            $errormessage_returnto = 'history.back()';
+            $errormessage_returnto = 'document.location.href=\'?op=noop\'';
         }
         print "<div id='dialog_error'><p>$errormessage</p><center><button onClick='".$errormessage_returnto."'>Zurück</button></center></div>";
         endofpage();
@@ -363,7 +394,7 @@
     if($message) {
         $message = str_replace('&amp;', '&', $message);
         $message = preg_replace('#(https?://\S+)#', '<a href="$1">$1</a>', $message);
-        print "<div id='dialog_message'><p>".$message."</p><center><button onClick='document.location.href=\"".$_SERVER['PHP_SELF']."?op=setopt\"'>Zurück</button></center></div>";
+        print "<div id='dialog_message'><p>".$message."</p><center><button onClick='document.location.href=\"".$_SERVER['PHP_SELF']."?op=noop\"'>Zurück</button></center></div>";
         endofpage();
     }
 
@@ -387,7 +418,20 @@
             endofpage();
     }
 
-    // at this point we have a logged in user and a chosen logfile
+    // only allow own and public flagged logs to be viewed
+    if(isset($_SESSION['log_id']) && !$admin) {
+        $res = sql_query("select id from logfile where id=".$_SESSION['log_id']."
+            and ( uploader_id=".$_SESSION['user_id']."
+                or public=1)");
+        $found = sql_num_rows($res);
+        list($viewing_allowed) = sql_fetch_row($res);
+        if($found && ! $viewing_allowed) {
+            header("Location: ?op=setopt&logfile=&message=Das Logfile wurde nicht von dir hochgeladen und ist nicht (mehr) öffentlich zugänglich.");
+            exit();
+        }
+    }
+    
+    // at this point we have a logged in user and maybe(!) a chosen logfile
     // let's go
 
     print "<div id='navbar' style='float:left'>
@@ -466,7 +510,7 @@
                         <input type='hidden' name='MAX_FILE_SIZE' value='".MAX_FILE_SIZE."'><!-- 512 kB -->
                         <p>Logfile hochladen (max. ".sprintf("%s", 1024 * (MAX_FILE_SIZE / pow(1024, floor((strlen(MAX_FILE_SIZE) - 1) / 3))))."kB): <input type='file' name='logfile'></p>
                         <p style='text-align:right'><input type='submit' value='Upload starten' id='button_start_upload' onClick='document.uploadform.submit()' $disable_ui_element>";
-                        if($_SESSION['user_id']==1) {
+                        if($demo) {
                             print "<div style='text-align:right'><small>In der Demo ist der Upload deaktiviert.</small></div>";
                         }
                         print "
@@ -517,7 +561,7 @@
                         </table>
                         <input type='hidden' name='op' value='logdelete'>
                         <p style='text-align:left'><input type='submit' value='Gewählte Logfiles löschen' $disable_ui_element></p>";
-                        if($_SESSION['user_id']==1) {
+                        if($demo) {
                             print "<div style='text-align:left'><small>In der Demo ist das Löschen deaktiviert.</small></div>";
                         }
                 print "</form>
@@ -554,7 +598,6 @@
         endofpage();
     }
 
-    print flushandcache(1);
     // at this point we have a logged in user, a chosen logfile and a minimum fight duration
     // we are able to gather logdata now
     
@@ -590,15 +633,11 @@
         $summary_threat   = 0;
         $summary_healed   = 0;
         
-        print "<h2><a name='stats_for_".$_char."'>Damagestats für ".$char." (".$fights_displayed." ".($fights_displayed==1?"Kampf":"Kämpfe")." angezeigt, ".$fights_hidden." versteckt)</a></h2>
-                    <div> <!-- empty div that fixes accordion width bug -->
-                        <div class='accordion'>";
+        $fight_tab_links = '';
         
         foreach($parser->players[$char]['fights'] as $fight) {
             $fight_start_id = $fight['start_id'];
-            $fight_start_timestamp = $fight['start_timestamp'];
             $fight_end_id = $fight['end_id'];
-            $fight_end_timestamp = $fight['end_timestamp'];
             
             if(!$min_timestamp) {
                 $min_timestamp = $fight['start_timestamp'];
@@ -606,113 +645,53 @@
             $max_timestamp = $fight['end_timestamp'];
             
             $fight_nr++;
-            $single_fight_duration = $fight_end_timestamp - $fight_start_timestamp;
-
-            if($single_fight_duration >= $_SESSION['min_fight_duration']) {
-                $fights_displayed++;
+            if($fight['end_timestamp']>0 && $fight['start_timestamp']>0) {
+                $single_fight_duration = $fight['end_timestamp'] - $fight['start_timestamp'];
                 
-                // tabs are able to fetch logdata themselves, but this is rather cpu-intensive
-                // so prefetch single-fight-data
-                unset($parser->logdata);
-                $parser->read_loglines($fight_start_id, $fight_end_id);
-                $parser->gather_logdata();
-                unset($parser->loglines);
-                
-                $tabs = array();
-                $tabs[] = new Tab_DpsHpsTps_per_Target(
-                        'fight'.$fight_nr.'-'.preg_replace('/\s/', '', $_char).'-damage',
-                        $char,
-                        $fight_start_id,
-                        $fight_end_id
-                    );
-                $benchmark->snapshot('fight_'.$fight_nr.'_tab_1');
-                $tabs[] = new Tab_Char_DpsTps_per_Ability(
-                        'fight'.$fight_nr.'-'.preg_replace('/\s/', '', $_char).'-dmgthreatabilities',
-                        $char,
-                        $fight_start_id,
-                        $fight_end_id
-                    );
-                $benchmark->snapshot('fight_'.$fight_nr.'_tab_2');
-                $tabs[] = new Tab_Char_HpsTps_per_Ability(
-                        'fight'.$fight_nr.'-'.preg_replace('/\s/', '', $_char).'-healthreatabilities',
-                        $char,
-                        $fight_start_id,
-                        $fight_end_id
-                    );
-                $benchmark->snapshot('fight_'.$fight_nr.'_tab_3');
-                $tabs[] = new Tab_Enemies_Damage_to_Char(
-                        'fight'.$fight_nr.'-enemies-vs-'.preg_replace('/\s/', '', $_char).'-sources',
-                        $char,
-                        $fight_start_id,
-                        $fight_end_id
-                    );
-                $benchmark->snapshot('fight_'.$fight_nr.'_tab_4');
-                $tabs[] = new Tab_Full_Fight_Stats(
-                        'fight'.$fight_nr.'-'.$_char.'-fullfight-stats',
-                        $char,
-                        $fight_start_id,
-                        $fight_end_id
-                    );
-                $benchmark->snapshot('fight_'.$fight_nr.'_tab_5');
-                $tabs[] = new Tab_Full_Fight_Graphs(
-                        'fight'.$fight_nr.'-'.$_char.'-fullfight-graphs',
-                        $char,
-                        $fight_start_id,
-                        $fight_end_id
-                    );
-                $benchmark->snapshot('fight_'.$fight_nr.'_tab_6');
-                // Daten in Tabs ausgeben
-    
-                // Dauer lesbar machen
-                $__time = $single_fight_duration;
-                $hours = floor($__time / (60*60));
-                $__time = $__time - $hours * (60*60);
-                $minutes = floor($__time / (60));
-                $__time = $__time - $minutes * 60;
-                $seconds = $__time;
-
-                $fight_title  = "Kampf ".$fight_nr;
-                $fight_title .= ": Dauer ".sprintf('%s:%02s:%02s',$hours,$minutes,$seconds).", ";
-                $fight_title .= "am ".date('d.m.', $fight_start_timestamp)." von ".date('H:i:s', $fight_start_timestamp)." bis ".date('H:i:s', $fight_end_timestamp);
-                $fight_title .= " [".round($fight['sum']['damage'] / $single_fight_duration, 2)." DPS ";
-                $fight_title .= "| ".round($fight['sum']['threat'] / $single_fight_duration, 2)." TPS ";
-                $fight_title .= "| ".round($fight['sum']['healed'] / $single_fight_duration, 2)." HPS ] ";
-                if($fight['sum']['damage']>0) {
-                    $fight_title .= $fight['sum']['damage']." Schaden verursacht, ";
-                }
-                if($fight['sum']['healed']>0) {
-                    $fight_title .= $fight['sum']['healed']." Punkte geheilt, ";
-                }
-                $fight_title .= $fight['sum']['threat']." Bedrohung erzeugt.";
-
-                print "<h3><a href='#'>".$fight_title."</a></h3>
-                    <div>
-                        <div class='tabs'>
-                            <ul>";
-                                foreach($tabs as $tab) {
-                                    print $tab->nameplate();
-                                }
-                                // $output_accordion_page .= "<li><a href='ajax_tab.php?tab=Tab_DpsHpsTps_per_Target&char=".$char."&min_id=".$fight['start_id']."&max_id=".$fight['end_id']."'>bla</a></li>";
-                print "     </ul>";
-
-                foreach($tabs as $tab) {
-                    print $tab->tabcontent();
-                    print flushandcache();
-                }
-                print "</div>
-                    </div>";
-                    
                 // collect data for summary tab
                 $summary_duration += $single_fight_duration;
                 $summary_damage += $fight['sum']['damage'];
                 $summary_threat += $fight['sum']['threat'];
                 $summary_healed += $fight['sum']['healed'];
                 
-                $benchmark->snapshot('fight_'.$fight_nr.'_printed');
-            } else {
-                $fights_hidden++;
+                if($single_fight_duration >= $_SESSION['min_fight_duration']) {
+                    $fights_displayed++;
+                    
+                    // Dauer lesbar machen
+                    $__time = $single_fight_duration;
+                    $hours = floor($__time / (60*60));
+                    $__time = $__time - $hours * (60*60);
+                    $minutes = floor($__time / (60));
+                    $__time = $__time - $minutes * 60;
+                    $seconds = $__time;
+                
+                    $fight_title  = "Kampf ".$fight_nr;
+                    $fight_title .= ": Dauer ".sprintf('%s:%02s:%02s',$hours,$minutes,$seconds).", ";
+                    $fight_title .= "am ".date('d.m.', $fight['start_timestamp'])." von ".date('H:i:s', $fight['start_timestamp'])." bis ".date('H:i:s', $fight['end_timestamp']);
+                    $fight_title .= " [".round($fight['sum']['damage'] / $single_fight_duration, 2)." DPS ";
+                    $fight_title .= "| ".round($fight['sum']['threat'] / $single_fight_duration, 2)." TPS ";
+                    $fight_title .= "| ".round($fight['sum']['healed'] / $single_fight_duration, 2)." HPS ] ";
+                    if($fight['sum']['damage']>0) {
+                        $fight_title .= $fight['sum']['damage']." Schaden verursacht, ";
+                    }
+                    if($fight['sum']['healed']>0) {
+                        $fight_title .= $fight['sum']['healed']." Punkte geheilt, ";
+                    }
+                    $fight_title .= $fight['sum']['threat']." Bedrohung erzeugt.";
+                    
+                    $fight_tab_links .= "<h3><a href='ajax_accordion.php?char=".$char."&log_id=".$_SESSION['log_id']."&fight=".$fight['start_id']."'>".$fight_title."</a></h3><div><img src='../../images/loading.gif' alt='Loading...'> Loading...</div>";
+                        
+                    $benchmark->snapshot('fight_'.$fight_nr.'_printed');
+                } else {
+                    $fights_hidden++;
+                }
             }
         }
+        
+        print "<h2><a name='stats_for_".$_char."'>Damagestats für ".$char." (".$fights_displayed." ".($fights_displayed==1?"Kampf":"Kämpfe")." angezeigt, ".$fights_hidden." versteckt)</a></h2>
+                    <div> <!-- empty div that fixes accordion width bug -->                                                                                                                     
+                        <div id='accordion_ajax'>";                                                                                                                                             
+        print $fight_tab_links;
 
         // Gesamt
         if($fights_displayed<1 && $fight_nr>0) {
@@ -722,14 +701,7 @@
         $tabs = array();
         $benchmark->snapshot('before_summary');
         
-        // regarding the eval bullshit below:
-        //   I'd rather put all tabs into an array to loop thru and call their nameplate and tabcontent methods
-        //   but doing so eats memory. lots.
-        //   using eval frees memory used by each tab object immediately
-        $tabs = array('Tab_DpsHpsTps_per_Target', 'Tab_Char_DpsTps_per_Ability', 'Tab_Char_HpsTps_per_Ability', 'Tab_Enemies_Damage_to_Char', 'Tab_Full_Fight_Stats', 'Tab_Full_Fight_Graphs');
-        //$tabs = array('Tab_DpsHpsTps_per_Target', 'Tab_Char_DpsTps_per_Ability', 'Tab_Char_HpsTps_per_Ability', 'Tab_Enemies_Damage_to_Char');
-
-        $summary_title  = "Alle Kämpfe (".$fights_displayed."): ";
+        $summary_title  = "Gesamtes Log: ";
         $summary_title .= "Dauer ".seconds_to_readable($summary_duration)." (aktiv), ";
         if($summary_duration) {
             $summary_title .= "am ".date('d.m.', $min_timestamp)." zwischen ".date('H:i:s', $min_timestamp)." und ".date('H:i:s', $max_timestamp);
@@ -744,77 +716,14 @@
             }
             $summary_title .= $summary_threat." Bedrohung erzeugt.";
         }
-        
-        unset($parser->logdata);
-        $parser->read_loglines();
-        $parser->gather_logdata();
-        unset($parser->loglines);
-        
-        $tabs = array();
-        $tabs[] = new Tab_DpsHpsTps_per_Target(
-                'sum-'.preg_replace('/\s/', '', $_char).'-damage',
-                $char,
-                $min_id,
-                $max_id
-            );
-        
-        unset($parser->logdata);
-        $parser->read_loglines();
-        $parser->gather_logdata();
-        unset($parser->loglines);
-        $tabs[] = new Tab_Char_DpsTps_per_Ability(
-                'sum-'.preg_replace('/\s/', '', $_char).'-dmgthreatabilities',
-                $char,
-                $min_id,
-                $max_id
-            );
-        
-        unset($parser->logdata);
-        $parser->read_loglines();
-        $parser->gather_logdata();
-        unset($parser->loglines);
-        $tabs[] = new Tab_Char_HpsTps_per_Ability(
-                'sum-'.preg_replace('/\s/', '', $_char).'-healthreatabilities',
-                $char,
-                $min_id,
-                $max_id
-            );
-        unset($parser->logdata);
-        $parser->read_loglines();
-        $parser->gather_logdata();
-        unset($parser->loglines);
-        $tabs[] = new Tab_Enemies_Damage_to_Char(
-                'sum-enemies-vs-'.preg_replace('/\s/', '', $_char).'-sources',
-                $char,
-                $min_id,
-                $max_id
-            );
-       
-        print "<h3><a href='#'>".$summary_title."</a></h3>
-            <div>
-                <div>
-                    <div class='tabs'>
-                        <ul>";
-                            foreach($tabs as $tab) {
-                                $benchmark->snapshot($tab->name);
-                                print $tab->nameplate();
-                            }
-                print " </ul>";
-                
-                foreach($tabs as $tab) {
-                    print $tab->tabcontent();
-                    print flushandcache();
-                }
-                print "</div>
-            </div>
-        </div>";
-        unset($tabs);
+        print "<h3><a href='ajax_accordion.php?char=".$char."&log_id=".$_SESSION['log_id']."'>".$summary_title."</a></h3><div><img src='../../images/loading.gif' alt='Loading...'> Loading...</div>";
 
         print "</div>"; // empty div that fixes accordion width bug
         print "</div>"; // accordion
-        
     } // foreach $char
     print "</div>"; // accordion
+    
+    
 
     sql_logout();
     unset($guil);
@@ -836,7 +745,7 @@
             $conditions_list = 'none';
         }
 
-        return 'cache/pixelmap_'.$_SESSION['user_id'].'_'.$_SESSION['log_id'].'_'.$start_id.'-'.$end_id.'_'.$char.'_'.$conditions_list.'_'.$section.'_'.$snd_sections_list.$dim_x.'x'.$dim_y.'_'.$eventtext;
+        return 'cache/pixelmap_'.$_SESSION['log_id'].'_'.$start_id.'-'.$end_id.'_'.$char.'_'.$conditions_list.'_'.$section.'_'.$snd_sections_list.$dim_x.'x'.$dim_y.'_'.$eventtext;
     }
 
     function pixelmap($start_id, $end_id, $section, $snd_sections, $char, $conditions, $eventtext=1, $dim_x=1500, $dim_y=300) {
@@ -1106,7 +1015,7 @@
         $dim_y = 150;
         $y_offset = 30;
 
-        $cache_filename = 'cache/piechart_'.$_SESSION['user_id'].'_'.$_SESSION['log_id'].'_'.join('_', $values).'_'.join('_', $labels).'_'.$dim_x.'x'.$dim_y;
+        $cache_filename = 'cache/piechart_'.join('_', $values).'_'.join('_', $labels).'_'.$dim_x.'x'.$dim_y;
         if(file_exists($cache_filename) && !$cacherenew==1) {
             readfile($cache_filename);
             exit();
@@ -1178,11 +1087,9 @@
     }
 
     function endofpage() {
-        global $cache_stats_filename, $openOptions, $logfiles, $benchmark;
+        global $openOptions, $logfiles, $benchmark;
 
         include("footer.php");
-
-        print flushandcache();
 
         $benchmark->snapshot('endofpage');
         $benchmark->summary();
@@ -1197,23 +1104,5 @@
             fclose($fh);
         }
         exit();
-    }
-    
-    function flushandcache($first=0) {
-        global $cache_stats_filename;
-        
-        $mode = 'a';
-        if($first) {
-            $mode = 'w';
-        }
-
-        $html = ob_get_flush();
-        if($cache_stats_filename) {
-            if($cache_handle = fopen($cache_stats_filename, $mode)) {
-                fwrite($cache_handle, $html);
-                fclose($cache_handle);
-            }
-        }
-        ob_start();
     }
 ?>

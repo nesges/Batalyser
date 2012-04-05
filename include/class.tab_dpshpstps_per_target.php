@@ -1,6 +1,6 @@
 <?
     class Tab_DpsHpsTps_per_Target extends Tab {
-        function Tab_DpsHpsTps_per_Target($name, $char, $start_id, $end_id) {
+        function Tab_DpsHpsTps_per_Target($name, $char, $start_id, $end_id, $class='') {
             global $parser;
 
             $targets = array();
@@ -32,7 +32,6 @@
                     $targets[$target_name]['threat'] += $logdata['threat'];
                     $targets[$target_name]['target_type'] = $logdata['target_type'];
                 }
-                // unset($logdata);
             }
 
             $data = '';
@@ -43,8 +42,21 @@
                         $target_name = preg_replace('/'.$char.':/', '', $target_name).' (Companion)';
                     }
                     if($target['damage']>0 || $target['healed']>0 || $target['threat']>0) {
+                        switch($target['target_type']) {
+                            case 'player':      
+                                if($target_name == $char) {
+                                    // self
+                                    $bgcolor = 'style="background-color:#ddffdd"'; 
+                                } else {
+                                    // other player
+                                    $bgcolor = 'style="background-color:#ffffdd"'; 
+                                }
+                                break;
+                            case 'companion':   $bgcolor = 'style="background-color:#ddddff"'; break;
+                            default:            $bgcolor = 'style="background-color:#ffdddd"'; break;
+                        }
                         $data .= "<tr>
-                                <td>".$target_name."</td>
+                                <td ".$bgcolor.">".$target_name."</td>
                                 <td>".$target['damage']."</td>
                                 <td>".$target['healed']."</td>
                                 <td>".$target['threat']."</td>
@@ -60,7 +72,9 @@
                 $name, 
                 'DPS/HPS/TPS pro Ziel', 
                 array('Ziel', 'Damage', 'Heal', 'Threat', 'DPS', 'HPS', 'TPS'), 
-                $data
+                $data,
+                $html,
+                $class
             );
         }
     }

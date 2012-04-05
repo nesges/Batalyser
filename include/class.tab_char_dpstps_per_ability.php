@@ -1,7 +1,7 @@
 <?
     class Tab_Char_DpsTps_per_Ability extends Tab {
         
-        function Tab_Char_DpsTps_per_Ability($name, $char, $start_id, $end_id) {
+        function Tab_Char_DpsTps_per_Ability($name, $char, $start_id, $end_id, $class='') {
             global $parser;
 
             $data = '';
@@ -40,6 +40,7 @@
                             $used_abilities[$ability_name]['parry'] += $logdata['parry'];
                             $used_abilities[$ability_name]['deflect'] += $logdata['deflect'];
                             $used_abilities[$ability_name]['immune'] += $logdata['immune'];
+                            $used_abilities[$ability_name]['resist'] += $logdata['resist'];
                             $used_abilities[$ability_name]['count']++;
             
                             $overall['damage'] += $logdata['hitpoints'];
@@ -51,6 +52,7 @@
                             $overall['parry'] += $logdata['parry'];
                             $overall['deflect'] += $logdata['deflect'];
                             $overall['immune'] += $logdata['immune'];
+                            $overall['resist'] += $logdata['resist'];
                             $overall['count']++;
                     }
                 }
@@ -75,6 +77,7 @@
                             <td>".$ability['dodge']."</td>
                             <td>".$ability['parry']."</td>
                             <td>".$ability['deflect']."</td>
+                            <td>".$ability['resist']."</td>
                             <td>".$ability['immune']."</td>
                             <td>".round(100/$ability['count']*($ability['hit']+$ability['crit']), 2)."%</td>
                             <td>".round(100/$ability['count']*$ability['hit'], 2)."%</td>
@@ -83,6 +86,7 @@
                             <td>".round(100/$ability['count']*$ability['dodge'], 2)."%</td>
                             <td>".round(100/$ability['count']*$ability['parry'], 2)."%</td>
                             <td>".round(100/$ability['count']*$ability['deflect'], 2)."%</td>
+                            <td>".round(100/$ability['count']*$ability['resist'], 2)."%</td>
                             <td>".round(100/$ability['count']*$ability['immune'], 2)."%</td>
                         </tr>";
                 }
@@ -97,14 +101,16 @@
                             ."&labels[3]=Dodge"
                             ."&labels[4]=Parry"
                             ."&labels[5]=Deflect"
-                            ."&labels[6]=Immune"
+                            ."&labels[6]=Resist"
+                            ."&labels[7]=Immune"
                             ."&values[0]=".$overall['hit']
                             ."&values[1]=".$overall['crit']
                             ."&values[2]=".$overall['miss']
                             ."&values[3]=".$overall['dodge']
                             ."&values[4]=".$overall['parry']
                             ."&values[5]=".$overall['deflect']
-                            ."&values[6]=".$overall['immune']
+                            ."&values[6]=".$overall['resist']
+                            ."&values[7]=".$overall['immune']
                         ."' alt='Hit/Crit/Miss/Dodge..'>
                         </td>
                     </tr>
@@ -115,7 +121,8 @@
                     <tr><td>Ausgewichen:    </td><td>".$overall['dodge']."</td>    <td>".round(100/$overall['count']*$overall['dodge'],   2)."%</td></tr>
                     <tr><td>Parriert:       </td><td>".$overall['parry']."</td>    <td>".round(100/$overall['count']*$overall['parry'],   2)."%</td></tr>
                     <tr><td>Schild:         </td><td>".$overall['deflect']."</td>  <td>".round(100/$overall['count']*$overall['deflect'], 2)."%</td></tr>
-                    <tr><td>Immun:          </td><td>".$overall['immune']."</td>   <td>".round(100/$overall['count']*$overall['immune'],  2)."%</td></tr>
+                    <tr><td>Widerstanden:   </td><td>".$overall['immune']."</td>   <td>".round(100/$overall['count']*$overall['immune'], 2)."%</td></tr>
+                    <tr><td>Immun:          </td><td>".$overall['immune']."</td>   <td>".round(100/$overall['count']*$overall['immune'], 2)."%</td></tr>
                 </table>
                 </div>";
             }
@@ -124,10 +131,11 @@
                 $name, 
                 'Damage pro Fähigkeit', 
                 array('Fähigkeit', 'Use', 'Damage', 'DPS', 'Damage/Use', 'Threat', 'TPS', 'Threat/Use',
-                        'Hit (alle)', 'Hit (noncrit)', 'Crit', 'Miss', 'Dodge', 'Parry', 'Deflect', 'Immune',
-                        'Hit (alle) %', 'Hit (noncrit) %', 'Crit %', 'Miss %', 'Dodge %', 'Parry %', 'Deflect %', 'Immune %'), 
+                        'Hit (alle)', 'Hit (noncrit)', 'Crit', 'Miss', 'Dodge', 'Parry', 'Deflect', 'Resist', 'Immun',
+                        'Hit (alle) %', 'Hit (noncrit) %', 'Crit %', 'Miss %', 'Dodge %', 'Parry %', 'Deflect %', 'Resist %', 'Immun %'), 
                 $data,
-                $html
+                $html,
+                $class
             );
         }
     }

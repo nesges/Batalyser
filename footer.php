@@ -1,11 +1,80 @@
 <?
     global $cache_stats_filename, $openOptions, $duration, $logfiles, $benchmark;
     session_start();
+    
+    $jquery_common_init = '
+                $( ".accordion" ).accordion({
+                    autoHeight: false,
+                    collapsible: true
+                });
+                $( ".tabs" ).tabs();';
 ?>
         <script type="text/javascript">
-            $(function(){
-                $( ".accordion" ).accordion({
-                    autoHeight: false
+            $(document).ajaxComplete(function(e, xhr, settings){
+                <?=$jquery_common_init?>
+                $( ".dataTable_ajaxLoaded").dataTable( {
+                    "bJQueryUI": true,
+                    "bStateSave": false,
+                    "bPaginate": false,
+                    "bFilter": true,
+                    "bSort": true,
+                    "bInfo": false,
+                    "bAutoWidth": false,
+                    "bRetrieve": true,
+                    "sDom": "R<\'H\'W>t",
+                    "fnRowCallback": function( nRow, aaData, iDisplayIndex ) {
+                        $("td:odd", nRow).addClass( "col2" );
+                        return nRow;
+                    },
+                    "aaSorting": [[ 0, "asc" ]]
+                });
+                $( ".dataTableFullFightStats_ajaxLoaded" ).dataTable( {
+                    "bJQueryUI": true,
+                    "bStateSave": false,
+                    "bPaginate": false,
+                    "bFilter": true,
+                    "bSort": true,
+                    "bInfo": false,
+                    "bAutoWidth": false,
+                    "bRetrieve": true,
+                    "sDom": "R<\'H\'W>t",
+                    "aaSorting": [[ 0, "asc" ]]
+                });
+            });
+            
+            $(document).ready(function() {
+                <?=$jquery_common_init?>
+                $( "input:submit, a, button", ".navigation" ).button();
+                $( "a", ".navigation" ).click(function() { return false; });
+                $( "input:submit, button" ).button();
+                $("#accordion_ajax").accordion({
+                    header: "h3",
+                    clearStyle: true,
+                    autoHeight: false,
+                    active: false,
+                    change: function(event, ui){
+                        var clicked = $(this).find(".ui-state-active").attr("id");
+                        $("#"+clicked).load("/widgets/"+clicked);
+                    }
+                }); 
+                $("h3", "#accordion_ajax").click(function(e) {
+                    var contentDiv = $(this).next("div");
+                    contentDiv.load($(this).find("a").attr("href"));      
+                });
+                $( ".dataTable").dataTable( {
+                    "bJQueryUI": true,
+                    "bStateSave": false,
+                    "bPaginate": false,
+                    "bFilter": true,
+                    "bSort": true,
+                    "bInfo": false,
+                    "bAutoWidth": false,
+                    "sDom": "R<\'H\'W>t",
+                    "fnRowCallback": function( nRow, aaData, iDisplayIndex ) {
+                        $("td:odd", nRow).addClass( "col2" );
+                        return nRow;
+                    },
+                    "aaSorting": [[ 0, "asc" ]]
                 });
                 $( "#accordion_options" ).accordion({
                     <?
@@ -15,26 +84,8 @@
                     ?>
                     autoHeight: false,
                 });
-                $( ".tabs" ).tabs();
-                $( "input:submit, a, button", ".navigation" ).button();
-                $( "a", ".navigation" ).click(function() { return false; });
-            });
-            $(document).ready(function() {
-                $('.dataTable').dataTable( {
-                    'bJQueryUI': true,
-                    'bStateSave': false,
-                    "bPaginate": false,
-                    "bFilter": true,
-                    "bSort": true,
-                    "bInfo": false,
-                    "bAutoWidth": false,
-                    'sDom': 'R<"H"W>t',
-                    "fnRowCallback": function( nRow, aaData, iDisplayIndex ) {
-                        $('td:odd', nRow).addClass( 'col2' );
-                        return nRow;
-                    },
-                    "aaSorting": [[ 0, "asc" ]]
-                });
+                
+                
                 $('.dataTableScrolling').dataTable( {
                     'bJQueryUI': true,
                     'bStateSave': false,
@@ -50,6 +101,19 @@
                         $('td:odd', nRow).addClass( 'col2' );
                         return nRow;
                     },
+                    "aaSorting": [[ 0, "asc" ]]
+                });
+                $('.dataTableFullFightStats').dataTable( {
+                    'bJQueryUI': true,
+                    'bStateSave': false,
+                    "bPaginate": false,
+                    /* 'sScrollY': '200px',          buggy atm (datatables 1.9)
+                       'bScrollAutoCss': true,  */
+                    "bFilter": true,
+                    "bSort": true,
+                    "bInfo": false,
+                    "bAutoWidth": false,
+                    'sDom': 'R<"H"W>t',
                     "aaSorting": [[ 0, "asc" ]]
                 });
                 $('#datatable_optionsLogfiles').dataTable( {
@@ -72,7 +136,7 @@
                     ?>
                     min: 1,
                     max: 600,
-                    step: 20,
+                    step: 10,
                     slide: function( event, ui ) {
                         $( "#min_fight_duration_slider_value" ).val( ui.value );
                     }
@@ -110,7 +174,6 @@
                     width: 800,
                     position: 'top'
                 });
-                $( "input:submit, button" ).button();
                 $( "#button_open_dialog_options" ).click(function() {
                     $( "#dialog_options" ).dialog( "open" );
                     return false;

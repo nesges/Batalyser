@@ -71,44 +71,44 @@
             return $output;
         }
         
-        // function datatable_constructor_for_json() {
-        //     return "$('#datatable_json_".$this->name."').dataTable( {
-        //                 'bProcessing': true,
-        //                 'sAjaxSource': 'report.php?op=".$this->name."_json',
-        //                 'iDisplayLength': 25,
-        //                 'bStateSave': false,
-        //                 'bJQueryUI': true,
-        //                 'sDom': 'R<\"H\"pirfC>t<\"F\"pi>'
-        //             });\n";
-        // }
-        // 
-        // function tabcontent_htmlskeleton_for_json() {
-        //     $output = '';
-        //     if($this->data || $this->html) {
-        //         $output .= "<div id='".$this->name."'>";
-        //         if(isset($this->columns) && count($this->columns)>0) {
-        //             $output .= "<table class='dataTable_json_".$this->name."'>
-        //                     <thead>
-        //                         <tr>";
-        //             foreach($this->columns as $colum_title) {
-        //                 $output .= "\n<th>$colum_title</th>";
-        //             }
-        //             $output .= "</tr>
-        //                     </thead>
-        //                     <tbody>
-        //                     </tbody>
-        //                 </table>";
-        //         }
-        //         if(isset($this->html)) {
-        //             $output .= $this->html;
-        //         }
-        //         $output .= "</div>";
-        //     }
-        //     return $output;
-        // }
-        // 
-        // function datatable_content_json() {
-        //     return '{ "aaData": '.json_encode($this->data).' }';
-        // }
+        function datatable_constructor_for_json() {
+            return "$('#datatable_json_".$this->name."').dataTable( {
+                        'bProcessing': true,
+                        'sAjaxSource': 'report.php?op=".$this->name."_json',
+                        'iDisplayLength': 25,
+                        'bStateSave': false,
+                        'bJQueryUI': true,
+                        'sDom': 'R<\"H\"pirfC>t<\"F\"pi>'
+                    });\n";
+        }
+        
+        function tabcontent_htmlskeleton_for_json() {
+            $output = '';
+            if($this->data || $this->html) {
+                $output .= "<div id='".$this->name."'>";
+                if(isset($this->columns) && count($this->columns)>0) {
+                    $output .= "<table class='dataTable_json_".$this->name."'>
+                            <thead>
+                                <tr>";
+                    foreach($this->columns as $colum_title) {
+                        $output .= "\n<th>$colum_title</th>";
+                    }
+                    $output .= "</tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>";
+                }
+                if(isset($this->html)) {
+                    $output .= $this->html;
+                }
+                $output .= "</div>";
+            }
+            return $output;
+        }
+        
+        function datatable_content_json() {
+            return '{ "aaData": '.json_encode($this->data).' }';
+        }
     }
 ?>

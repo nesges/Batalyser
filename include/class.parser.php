@@ -17,7 +17,7 @@
         
         // may be created without params to unserialize a parser identified by $_SESSION['log_id']
         function Parser($logfile='', $log_id='') {
-            global $version, $cacherenew;
+            global $version;
             
             $this->cache_parser_filename = 'cache/serialized_parser_'.$_SESSION['log_id'].'_'.$version;
             if(file_exists($this->cache_parser_filename)) {
@@ -59,6 +59,7 @@
                 $this->hit_types = array();
 
                 $this->populate();
+                $this->serialize_self();
             }
         }
         
@@ -70,7 +71,27 @@
         }
         
         function populate() {
-            $logfile_handle = fopen($this->logfile, "r");
+            $read_from_file = $this->logfile;
+            $archive_dir = '';
+            
+            if(preg_match('/\.zip$/', $this->logfile)) {
+                $archive_dir = $this->logfile.'~';
+                @mkdir($archive_dir);
+                exec('unzip "'.$this->logfile.'" -d "'.$archive_dir.'/"');
+                $extracted = glob($archive_dir.'/*.*');
+                if(count($extracted)!=1) {
+                    foreach($extracted as $extracted_file) {
+                        @unlink($extracted_file);
+                    }
+                    @rmdir($archive_dir);
+                    header('Location: '.$_SERVER['PHP_SELF'].'?op=noop&message=Ein Archiv muss genau ein Combatlog enthalten.');
+                    exit();
+                } else {
+                    $read_from_file = $extracted[0];
+                }
+            }
+            
+            $logfile_handle = fopen($read_from_file, "r");
             if(!$logfile_handle) {
                 die("couldn't open logfile ".$this->logfile);
             }
@@ -241,7 +262,16 @@
                         if($month && $year && $day) {
                             $timestamp = strtotime("$year-$month-$day $time");
                         } else {
+                            // BW did cut of the datepart in the latest update on pts 
                             $timestamp = strtotime(date('Y-m-d')." $time");
+                            preg_match('/(\d\d):\d\d:\d\d/', $time, $time_matches);
+                            $current_hour   = $time_matches[1];
+                            if(isset($last_hour) && $current_hour < $last_hour) {
+                                // add one day when the clock turns from 23 to 00
+                                $timestamp += 60*60*24;
+                            } else {
+                                $last_hour = $current_hour;
+                            }
                         }
                         $row['timestamp'] = $timestamp;
                         if(! $this->start_timestamp) {
@@ -358,6 +388,14 @@
             }
             
             $this->players = $logdata['players'];
+            
+            if($archive_dir) {
+                $files = glob($archive_dir.'/*');
+                foreach($files as $extracted_file) {
+                    @unlink($extracted_file);
+                }
+                @rmdir($archive_dir);
+            }
         }
         
         function read_loglines($start_line='', $end_line='') {
@@ -372,16 +410,21 @@
                 $end_line = $start_line+PARSER_MAX_FETCH;
             }
             
+            $language = $_SESSION['language'];
+            if(! $language) {
+                $language = 'de';
+            }
+            
             $res = sql_query("select
                 d.line_no, unix_timestamp(d.timestamp),
-                d.source_id, d.source_type, coalesce(nullif(s.".$_SESSION['language'].", ''), nullif(s.de, ''), nullif(s.en, ''), d.source_name),
-                d.target_id, d.target_type, coalesce(nullif(t.".$_SESSION['language'].", ''), nullif(t.de, ''), nullif(t.en, ''), d.target_name),
+                d.source_id, d.source_type, coalesce(nullif(s.".$language.", ''), nullif(s.de, ''), nullif(s.en, ''), d.source_name),
+                d.target_id, d.target_type, coalesce(nullif(t.".$language.", ''), nullif(t.de, ''), nullif(t.en, ''), d.target_name),
                 d.hitpoints, 
-                d.hit_type_id, coalesce(nullif(h.".$_SESSION['language'].", ''), nullif(h.de, ''), nullif(h.en, '')), 
+                d.hit_type_id, coalesce(nullif(h.".$language.", ''), nullif(h.de, ''), nullif(h.en, '')), 
                 d.crit, d.threat,
-                d.ability_id, coalesce(nullif(a.".$_SESSION['language'].", ''), nullif(a.de, ''), nullif(a.en, '')),
-                d.effect_id, coalesce(nullif(e.".$_SESSION['language'].", ''), nullif(e.de, ''), nullif(e.en, '')),
-                d.effect_type_id, coalesce(nullif(et.".$_SESSION['language'].", ''), nullif(et.de, ''), nullif(et.en, ''))
+                d.ability_id, coalesce(nullif(a.".$language.", ''), nullif(a.de, ''), nullif(a.en, '')),
+                d.effect_id, coalesce(nullif(e.".$language.", ''), nullif(e.de, ''), nullif(e.en, '')),
+                d.effect_type_id, coalesce(nullif(et.".$language.", ''), nullif(et.de, ''), nullif(et.en, ''))
                 from data d
                     left join ability a on (a.id = d.ability_id)
                     left join effect e on (e.id = d.effect_id)
@@ -492,7 +535,7 @@
                         case DODGE:
                             $hitorshit = 'dodge';
                             break;
-                        case IMMUNE:          // ??? needs confirmation
+                        case IMMUNE:
                             $hitorshit = 'immune';
                             break;
                         case PARRY:
@@ -501,6 +544,9 @@
                         case DEFLECT:
                             $hitorshit = 'deflect';
                             break;
+                        //case RESIST:
+                        //    $hitorshit = 'resist';
+                        //    break;
                         default:
                             // if damage_type doesn't start with "-" and it's no crit, it's a normal hit
                             if(!preg_match('/^-/', $damage_type)) {

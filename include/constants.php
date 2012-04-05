@@ -1,6 +1,6 @@
 <?
     global $version;
-    $version = "0.4";
+    $version = "0.5";
 
     // effect_id
     define('DEATH',         '836045448945493');
@@ -15,5 +15,6 @@
     define('DEFLECT',       '836045448945508');
     define('DODGE',         '836045448945505');
     define('COVER',         '836045448945510');
-    define('IMMUNE',        'UNKNOWN');
+    define('IMMUNE',        '836045448945506');
+    define('RESIST',        '836045448945507');
 ?>

@@ -1,9 +1,8 @@
 <?
     class Tab_Char_HpsTps_per_Ability extends Tab {
         
-        function Tab_Char_HpsTps_per_Ability($name, $char, $start_id, $end_id) {
+        function Tab_Char_HpsTps_per_Ability($name, $char, $start_id, $end_id, $class='') {
             global $parser;
-            //$logdata = parent::load_logdata($start_id, $end_id);
             
             $data = '';
             $html = '';
@@ -91,7 +90,8 @@
                 array('Fähigkeit', 'Use', 'Heal', 'HPS', 'Heal/Use', 'Threat', 'TPS', 'Threat/Use',
                         'Hit', 'Crit', 'Hit %', 'Crit %'), 
                 $data,
-                $html
+                $html,
+                $class
             );
         }
     }
