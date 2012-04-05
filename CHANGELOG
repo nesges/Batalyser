@@ -1,0 +1,19 @@
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+v0.5
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* fixed a bug where everyone could view everyones logs
+* implemented op=noop to reset $_SESSION['log_id']
+* back-button in dialogs goes to op=noop
+* implemented logdownload
+* min_fight_duration uses steps of 10s now
+* removed user_id and log_id from piecharts cachefilename
+* Tab_Enemies_Damage_to_Char enhanced with tankstats
+* added hit_type_id 836045448945507 as RESIST
+* added hit_type_id 836045448945506 as IMMUNE
+* Tab_Full_Fight_Stats now shows companion DMG(out) and Heal(out)
+* colorcoding of Tab_Full_Fight_Stats rows
+* colorcoding of Tab_DpsHpsTps_per_Target target-name cells
+* all fight-accordions now loaded per ajax
+* removed stats-page caching. it's not needed anymore because all accordions are cached separately
+* added unlinking of cachefiles to logdelete
+* added support for zip-upload
