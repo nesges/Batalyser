@@ -70,16 +70,16 @@
             }
             
             if(count($enemies) > 0) {
-                $html = "<p>Dieser Tab zeigt die Werte deiner Gegner gegen dich. Wieviel Schaden hat ein Gegner an dir gemacht? Wie oft hat er verfehlt?";
+                $html = "<p>".guil('tankstats_note1');
                 if($start_id == $parser->start_id && $end_id == $parser->end_id) {
-                    $html .= "<br>In der Gesamtansicht werden DPS-Werte ausgeblendet, da sie auf die Gesamtdauer des Logs nicht sinnvoll darzustellen sind.";
+                    $html .= "<br>".guil('tankstats_note2');
                 }
                 $html .= "</p>
                     <div class='accordion'>";
                 $_html = '';
                 $duration = $end_timestamp - $start_timestamp;
                 foreach($enemies as $enemy_name => $enemy) {
-                    $_html .= "<h4><a href='#'>".$enemy_name." (".$enemy['damage']." Damage";
+                    $_html .= "<h4><a href='#'>".$enemy_name." (".$enemy['damage']." ".guil('damage');
                     if(! $hidexps) {
                         $_html .= ", ".round($enemy['damage'] / $duration, 2)." DPS";
                     }
@@ -89,9 +89,9 @@
                                 <table class='".($class?$class:'dataTable')."'>
                                     <thead>
                                         <tr>
-                                            <th>Fähigkeit</th>
+                                            <th>".guil('ability')."</th>
                                             <th>Use</th>
-                                            <th>Damage</th>
+                                            <th>".guil('damage')."</th>
                                             <th>Dmg/Use</th>";
                                             if(! $hidexps) {
                                                 $_html .= "<th>DPS</th>";
@@ -108,8 +108,8 @@
                                             <th>Parry</th>
                                             <th>Deflect</th>
                                             <th>Resist</th>
-                                            <th>Immun</th>
-                                            <th>Hit (alle) %</th>
+                                            <th>Immune</th>
+                                            <th>Hit (all)%</th>
                                             <th>Hit (noncrit) %</th>
                                             <th>Crit %</th>
                                             <th>Miss %</th>
@@ -117,7 +117,7 @@
                                             <th>Parry %</th>
                                             <th>Deflect %</th>
                                             <th>Resist %</th>
-                                            <th>Immun %</th>
+                                            <th>Immune %</th>
                                         </tr>
                                     </thead>
                                     <tbody>";
@@ -157,7 +157,7 @@
                     $_html .= "</tbody>
                                     <tfoot>
                                         <tr>
-                                            <td>Summe</td>
+                                            <td>".guil('sum')."</td>
                                             <td>".$enemy['attack_count']."</td>
                                             <td>".$enemy['damage']."</td>
                                             <td>".round($enemy['damage']/$enemy['attack_count'], 2)."</td>";
@@ -192,7 +192,7 @@
                                 
                             </div>";
                 }
-                $html .= "<h4><a href='#gesamt_all_vs_".$char."'>Gesamt (".$overall['damage']." Damage";
+                $html .= "<h4><a href='#gesamt_all_vs_".$char."'>".guil('overall')." (".$overall['damage']." ".guil('damage');
                     if(! $hidexps) {
                         $html .= ", ".round($overall['damage'] / $duration, 2)." DPS";
                     }
@@ -202,28 +202,28 @@
                                         <tr>
                                             <td>
                                                 <table>
-                                                    <tr><td>Treffer (hit+crit): </td><td>".($overall['hit']+$overall['crit'])."</td>      <td>".round(100/$overall['count']*($overall['hit']+$overall['crit']),     2)."%</td></tr>
-                                                    <tr><td>Treffer (noncrit):</td><td>".$overall['hit']."</td>    <td>".round(100/$overall['count']*$overall['hit'],     2)."%</td></tr>
-                                                    <tr><td>Kritisch:       </td><td>".$overall['crit']."</td>     <td>".round(100/$overall['count']*$overall['crit'],    2)."%</td></tr>
-                                                    <tr><td>Verfehlt:       </td><td>".$overall['miss']."</td>     <td>".round(100/$overall['count']*$overall['miss'],    2)."%</td></tr>
-                                                    <tr><td>Ausgewichen:    </td><td>".$overall['dodge']."</td>    <td>".round(100/$overall['count']*$overall['dodge'],   2)."%</td></tr>
-                                                    <tr><td>Parriert:       </td><td>".$overall['parry']."</td>    <td>".round(100/$overall['count']*$overall['parry'],   2)."%</td></tr>
-                                                    <tr><td>Schild:         </td><td>".$overall['deflect']."</td>  <td>".round(100/$overall['count']*$overall['deflect'], 2)."%</td></tr>
-                                                    <tr><td>Resist:         </td><td>".$overall['resist']."</td>   <td>".round(100/$overall['count']*$overall['resist'], 2)."%</td></tr>
-                                                    <tr><td>Immun:          </td><td>".$overall['immune']."</td>   <td>".round(100/$overall['count']*$overall['immune'], 2)."%</td></tr>
+                                                    <tr><td>".guil('hitall').":     </td><td>".($overall['hit']+$overall['crit'])."</td>      <td>".round(100/$overall['count']*($overall['hit']+$overall['crit']),     2)."%</td></tr>
+                                                    <tr><td>".guil('hitnoncrit').": </td><td>".$overall['hit']."</td>    <td>".round(100/$overall['count']*$overall['hit'],     2)."%</td></tr>
+                                                    <tr><td>".guil('crit').":       </td><td>".$overall['crit']."</td>     <td>".round(100/$overall['count']*$overall['crit'],    2)."%</td></tr>
+                                                    <tr><td>".guil('miss').":       </td><td>".$overall['miss']."</td>     <td>".round(100/$overall['count']*$overall['miss'],    2)."%</td></tr>
+                                                    <tr><td>".guil('dodge').":      </td><td>".$overall['dodge']."</td>    <td>".round(100/$overall['count']*$overall['dodge'],   2)."%</td></tr>
+                                                    <tr><td>".guil('parry').":      </td><td>".$overall['parry']."</td>    <td>".round(100/$overall['count']*$overall['parry'],   2)."%</td></tr>
+                                                    <tr><td>".guil('deflect').":    </td><td>".$overall['deflect']."</td>  <td>".round(100/$overall['count']*$overall['deflect'], 2)."%</td></tr>
+                                                    <tr><td>".guil('resist').":     </td><td>".$overall['resist']."</td>   <td>".round(100/$overall['count']*$overall['resist'], 2)."%</td></tr>
+                                                    <tr><td>".guil('immune').":     </td><td>".$overall['immune']."</td>   <td>".round(100/$overall['count']*$overall['immune'], 2)."%</td></tr>
                                                 </table>
                                             </td>
                                             <td>
                                                 <iframe width='450' height='300' frameborder='0' scrolling='no' src='piechart_google.php?";
-                    $html .=  "Treffer=".$overall['hit'];
-                    $html .= "&Kritisch=".$overall['crit'];
-                    $html .= "&Verfehlt=".$overall['miss'];
-                    $html .= "&Ausgewichen=".$overall['dodge'];
-                    $html .= "&Parriert=".$overall['parry'];
-                    $html .= "&Schild=".$overall['deflect'];
-                    $html .= "&Widerstanden=".$overall['Resist'];
-                    $html .= "&Immun=".$overall['Immune'];
-                    $html .= "&pietitle=Gegentrefferstatistik&pieheight=300&piewidth=450'></iframe>
+                    $html .=     guil('hitnoncrit')."=".$overall['hit'];
+                    $html .= "&".guil('crit')."=".$overall['crit'];
+                    $html .= "&".guil('miss')."=".$overall['miss'];
+                    $html .= "&".guil('dodge')."=".$overall['dodge'];
+                    $html .= "&".guil('parry')."=".$overall['parry'];
+                    $html .= "&".guil('deflect')."=".$overall['deflect'];
+                    $html .= "&".guil('resist')."=".$overall['Resist'];
+                    $html .= "&".guil('immune')."=".$overall['Immune'];
+                    $html .= "&pietitle=".guil('counterhitstatistic')."&pieheight=300&piewidth=450'></iframe>
                                             </td>
                                         </tr>
                                     </table>

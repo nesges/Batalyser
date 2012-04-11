@@ -1,6 +1,6 @@
 <?
     session_start();
-    
+
     global $guil, $version;
 
     // user_id=1 is our demo-user
@@ -19,9 +19,8 @@
         // error_reporting(E_ALL);
     }
 
-    include("include/class.benchmark.php");
-    $benchmark = new Benchmark("benchmarks");
-    
+    // include("include/class.benchmark.php");
+
     include_once("include/init.php");
     include("include/class.tab.php");
     include("include/class.tab_dpshpstps_per_target.php");
@@ -53,6 +52,14 @@
     } elseif(isset($_GET['options'])) {
         $openOptions = $_GET['options'];
     }
+    
+    // check for saved settings
+    if(isset($_COOKIE['language'])) {
+        $_SESSION['language'] = $_COOKIE['language'];
+    }
+    if(isset($_COOKIE['min_fight_duration'])) {
+        $_SESSION['min_fight_duration'] = $_COOKIE['min_fight_duration'];
+    }
 
     $message="";
     $errormessage="";
@@ -70,16 +77,18 @@
             }
             if(isset($_GET['min_fight_duration'])) {
                 $_SESSION['min_fight_duration'] = $_GET['min_fight_duration'];
+                setcookie('min_fight_duration', $_GET['min_fight_duration'], time()+60*60*24*30);
             }
             if(isset($_GET['prefered_language'])) {
                 $_SESSION['language'] = $_GET['prefered_language'];
+                setcookie('language', $_GET['prefered_language'], time()+60*60*24*30);
             }
-            if(isset($_GET['min_logrange'])) {
-                $_SESSION['min_logrange'] = $_GET['min_logrange'];
-            }
-            if(isset($_GET['max_logrange'])) {
-                $_SESSION['max_logrange'] = $_GET['max_logrange'];
-            }
+            //if(isset($_GET['min_logrange'])) {
+            //    $_SESSION['min_logrange'] = $_GET['min_logrange'];
+            //}
+            //if(isset($_GET['max_logrange'])) {
+            //    $_SESSION['max_logrange'] = $_GET['max_logrange'];
+            //}
 
             if(! isset($_SESSION['min_fight_duration'])) {
                 $_SESSION['min_fight_duration'] = 30;
@@ -111,6 +120,9 @@
             $_SESSION['user_email'] = "";
             break;
         case "login":
+            $_SESSION['language'] = $_POST['language'];
+            setcookie('language', $_POST['language'], time()+60*60*24*30);
+            
             $login_user = mysql_escape_string($_POST['username']);
             $login_pass = mysql_escape_string($_POST['password']);
 
@@ -126,7 +138,7 @@
                 $_SESSION['user_name'] = $name;
                 $_SESSION['user_email'] = $mail;
             } else {
-                $login_message = "Falsche Benutzerdaten. Versuch's nochmal :)";
+                $login_message = guil('login_wrongcredentials');
             }
             unset($t_hasher);
             break;
@@ -159,21 +171,21 @@
         case "logdownload":
             $res = sql_query("select filename from logfile where id=".mysql_escape_string($_GET['logfile']));
             list($filename) = sql_fetch_row($res);
-            header("Expires: 0"); 
-            header("Cache-Control: must-revalidate, post-check=0, pre-check=0"); 
-            header("Content-Type: application/force-download"); 
-            header("Content-Description: File Transfer"); 
-            header("Content-Disposition: attachment; filename=".$filename); 
-            header("Content-Transfer-Encoding: binary"); 
+            header("Expires: 0");
+            header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
+            header("Content-Type: application/force-download");
+            header("Content-Description: File Transfer");
+            header("Content-Disposition: attachment; filename=".$filename);
+            header("Content-Transfer-Encoding: binary");
             readfile($filename);
             exit();
         case "logpublicize":
             sql_query("update logfile set public=1 where id = '".mysql_escape_string($_GET['logfile'])."' and uploader_id='".$_SESSION['user_id']."'");
-            header("Location: ".$_SERVER['PHP_SELF']."?op=noop&message=Dein Log ist jetzt öffentlich unter der Adresse ".urlencode('http://'.$_SERVER['SERVER_NAME'].$_SERVER['PHP_SELF']."?op=setopt&logfile=".$_GET['logfile'])." erreichbar.");
+            header("Location: ".$_SERVER['PHP_SELF']."?op=noop&message=".guil('logpublicizedunder')." ".urlencode('http://'.$_SERVER['SERVER_NAME'].$_SERVER['PHP_SELF']."?op=setopt&logfile=".$_GET['logfile']));
             exit();
         case "logdepublicize":
             sql_query("update logfile set public=0 where id = '".mysql_escape_string($_GET['logfile'])."' and uploader_id='".$_SESSION['user_id']."'");
-            header("Location: ".$_SERVER['PHP_SELF']."?op=noop&message=Dein Log ist jetzt nicht mehr öffentlich erreichbar.");
+            header("Location: ".$_SERVER['PHP_SELF']."?op=noop&message=".guil('logdepublicized'));
             exit();
         case "logupload":
             if($_SESSION['user_id'] && !$demo) {
@@ -186,7 +198,7 @@
                         $res = sql_query("select max(id) from logfile where uploader_id = ".$_SESSION[user_id]);
                         list($logfile_id) = sql_fetch_row($res);
                         $_SESSION['log_id'] = $logfile_id;
-                
+
                         $parser = new Parser($filename, $logfile_id);
                         $parser->read_loglines();
                         $parser->gather_logdata();
@@ -197,13 +209,13 @@
                         }
                         if(! $parser->fight_count) {
                             sql_query("delete from logfile where id=".$logfile_id);
-                            
-                            $errormessage = "Das Log enthielt keine Kampfdaten.";
+
+                            $errormessage = guil('logfilecontainsnodata');
                             $errormessage_returnto = "document.location.href=\"?op=noop\"";
                         } else {
                             $notes = '['.date("d.m. H:i", $parser->start_timestamp).'-'.date("H:i", $parser->end_timestamp).'] '.$playerlist.': '.$parser->fight_count.' Kämpfe, '.(count($parser->actors)-1).' Gegner';
                             sql_query("update logfile set notes='".$notes."' where id='".$logfile_id."'");
-                
+
                             // insert new effects, abilities etc.
                             if($parser->language) {
                                 if($parser->abilities) {
@@ -261,21 +273,21 @@
                             exit();
                         }
                     } else {
-                        $errormessage = "Die Datei konnte nicht hochgeladen werden.";
+                        $errormessage = guil('filenotuploaded');
                         $errormessage_returnto = "document.location.href=\"?op=noop\"";
                     }
                 } else {
-                    $errormessage = "Du hast keine Datei zum Upload ausgewählt oder sie war zu groß.";
+                    $errormessage = guil('nofilechosenorfiletolarge');
                     $errormessage_returnto = "document.location.href=\"?op=noop\"";
                 }
             }
             break;
         case "bugreport":
             if($_POST['bugreport']) {
-                
+
                 $subject = $_POST['subject'].' ('.preg_replace('#/?batalyser/?#', '', dirname($_SERVER['REQUEST_URI'])).' v'.$version.')';
-                
-                sql_query("insert into bugreport (subject, message, user_id, logfile_id) 
+
+                sql_query("insert into bugreport (subject, message, user_id, logfile_id)
                     values ('".$subject."', '".mysql_escape_string($_POST['bugreport'])."', '".$_SESSION['user_id']."', '".$_SESSION['log_id']."')");
                 $res = sql_query("select max(id) from bugreport where user_id='".$_SESSION['user_id']."'");
                 list($bugreport_id) = sql_fetch_row($res);
@@ -291,9 +303,9 @@
                     'From: '.$_POST['email']
                 );
                 $phpbb_bridge_url = 'http://'.dirname($_SERVER['SERVER_NAME'].$_SERVER['REQUEST_URI']).'/phpbb.php';
-                header('Location: '.$phpbb_bridge_url.'?op=bugreport&id='.$bugreport_id.'&returnto='.base64_encode($_SERVER['PHP_SELF'].'?op=setopt&message='.urlencode('Vielen Dank für deine Nachricht! Du findest sie im Forum unter [post_url]')));
+                header('Location: '.$phpbb_bridge_url.'?op=bugreport&id='.$bugreport_id.'&returnto='.base64_encode($_SERVER['PHP_SELF'].'?op=setopt&message='.urlencode(guil('thanksforyourbugreport').' [post_url]')));
             } else {
-                header("Location: ".$_SERVER['PHP_SELF']."?message=Du hast vergessen eine Nachricht einzugeben.");
+                header("Location: ".$_SERVER['PHP_SELF']."?message=".guil('bugreportwithoutmessage'));
             }
             exit();
             break;
@@ -318,7 +330,7 @@
             // }
         }
     }
-    
+
     // ops needing database and user
     switch($op) {
         case "pixelmap":
@@ -365,25 +377,37 @@
         if(!$errormessage_returnto) {
             $errormessage_returnto = 'document.location.href=\'?op=noop\'';
         }
-        print "<div id='dialog_error'><p>$errormessage</p><center><button onClick='".$errormessage_returnto."'>Zurück</button></center></div>";
-        endofpage();
+        print "<div id='dialog_error'><p>$errormessage</p><center><button onClick='".$errormessage_returnto."'>".guil('back')."</button></center></div>";
+        include("footer.php");
     }
 
     if($message) {
         $message = str_replace('&amp;', '&', $message);
         $message = preg_replace('#(https?://\S+)#', '<a href="$1">$1</a>', $message);
-        print "<div id='dialog_message'><p>".$message."</p><center><button onClick='document.location.href=\"".$_SERVER['PHP_SELF']."?op=noop\"'>Zurück</button></center></div>";
-        endofpage();
+        print "<div id='dialog_message'><p>".$message."</p><center><button onClick='document.location.href=\"".$_SERVER['PHP_SELF']."?op=noop\"'>".guil('back')."</button></center></div>";
+        include("footer.php");
     }
 
     if(! $_SESSION['user_id']) {
         print "<div id='dialog_login'>
-                <p>Batalyser nutzt die Foren-Accounts zur Userverwaltung. Melde Dich bitte mit deinem Foren-Login an.</p>
+                <p>".guil('dialog_login_useforumacc')."</p>
                 <form action='' method='POST'>
                     <table>
-                        <tr><td>Login:</td>     <td><input type='text' name='username'></td></tr>
-                        <tr><td>Passwort:</td>  <td><input type='password' name='password'></td></tr>
-                        <tr><td colspan='2' align='center'><input type='submit' value='Anmelden'></td></tr>
+                        <tr><td>".guil('username').":</td>        <td><input type='text' name='username'></td></tr>
+                        <tr><td>".guil('password').":</td>        <td><input type='password' name='password'></td></tr>
+                        <tr><td>".guil('preferedlanguage').":</td><td>
+                            <select name='language'>";
+        foreach(array('de' => 'Deutsch', 'en' => 'English') as $short => $long) {
+            if($_SESSION['language'] == $short) {
+                $selected = "selected='selected'";
+            } else {
+                $selected = "";
+            }
+            print "<option value='".$short."' ".$selected.">".$long."</option>";
+        }
+        print "</select>
+                        </td></tr>
+                        <tr><td colspan='2' align='center'><input type='submit' value='".guil('login')."'></td></tr>
                     </table>";
         if($login_message) {
             print "<p style='color:red; text-align:center'>".$login_message."</p>";
@@ -391,9 +415,9 @@
         print "<input type='hidden' name='op' value='login'>
 
                 </form>
-                <p><a href='/forum/ucp.php?mode=register'>Registrieren</a> <a href='?op=demo'>Demo</a></p>
+                <p><a href='/forum/ucp.php?mode=register'>".guil('register')."</a> <a href='?op=demo'>".guil('startdemo')."</a></p>
             </div>";
-            endofpage();
+            include("footer.php");
     }
 
     // only allow own and public flagged logs to be viewed
@@ -404,24 +428,24 @@
         $found = sql_num_rows($res);
         list($viewing_allowed) = sql_fetch_row($res);
         if(!$viewing_allowed) {
-            header("Location: ?op=setopt&logfile=&message=Das Logfile wurde nicht von dir hochgeladen und ist nicht (mehr) öffentlich zugänglich.");
+            header("Location: ?op=setopt&logfile=&message=".guil('notthelogyourelookingfor'));
             exit();
         }
     }
-    
+
     // at this point we have a logged in user and maybe(!) a chosen logfile
     // let's go
 
     print "<div id='navbar' style='float:left'>
-            <button onClick='document.location.href=\"/forum\"'>Forum</button>
+            <button onClick='document.location.href=\"/forum\"'>".guil('forum')."</button>
         </div>
         <div style='float:left; margin-left:25px'>
-            <b>Logfile:</b>    ".$logfiles[$_SESSION['log_id']]['notes']." |
-            <b>Mindest-Kampfdauer:</b>     ".$_SESSION['min_fight_duration']."s |
-            <b>Sprache:</b>                ".$languages[$_SESSION['language']]."
+            <b>".guil('logfile').":</b>             ".$logfiles[$_SESSION['log_id']]['notes']." |
+            <b>".guil('minfightduration').":</b>    ".$_SESSION['min_fight_duration']." |
+            <b>".guil('preferedlanguage').":</b>    ".$languages[$_SESSION['language']]."
         </div>
         <div style='text-align:right'>
-            Eingeloggt als: ".$_SESSION['user_name']."
+            ".guil('loggedinas').": ".$_SESSION['user_name']."
             <button onClick='document.location.href=\"?op=session_reset\"'>".guil('logoff')."</button>
             <button id='button_open_dialog_options'>".guil('options')."</button>
             <button id='button_open_dialog_help'>?</button>
@@ -434,7 +458,7 @@
                     <form action='' method='GET'>
                         <table width='100%'>
                             <tr>
-                                <td nowrap='nowrap'>Logfile anzeigen:</td>
+                                <td nowrap='nowrap'>".guil('view_chooselogfile').":</td>
                                 <td colspan='2'><select name='logfile'>";
                                 foreach($logfiles as $logfile_id => $logfile) {
                                     $selected = "";
@@ -446,21 +470,12 @@
                                 print "</select></td>
                             </tr>
                             <tr>
-                                <td nowrap='nowrap'>Mindest-Kampfdauer (Sekunden):</td>
+                                <td nowrap='nowrap'>".guil('minfightduration').":</td>
                                 <td width='70%'><div id='min_fight_duration_slider'></div></td>
                                 <td><input type='text' id='min_fight_duration_slider_value' name='min_fight_duration' value='' style='width:3em' readonly='readonly'></td>
                             </tr>
-                            <!--tr>
-                                <td nowrap='nowrap'>Logausschnitt:</td>
-                                <td width='70%'><div id='logrange_slider'></div></td>
-                                <td>
-                                    <input type='text' id='logrange_slider_value1' name='min_logrange' value='".(isset($_SESSION['min_logrange'])?$_SESSION['min_logrange']:0)."' style='width:5em' readonly='readonly'>
-                                    -
-                                    <input type='text' id='logrange_slider_value2' name='max_logrange' value='".(isset($_SESSION['max_logrange'])?$_SESSION['max_logrange']:100)."' style='width:5em' readonly='readonly'>
-                                </td>
-                            </tr-->
                             <tr>
-                                <td>Bevorzugte Sprache:</td>
+                                <td>".guil('preferedlanguage').":</td>
                                 <td>
                                     <select name='prefered_language'>";
                                         foreach($languages as $short => $long) {
@@ -475,39 +490,39 @@
                                 <td></td>
                             </tr>
                             <tr>
-                                <td colspan='3' align='right'><input type='submit' value='Log mit diesen Einstellungen ansehen'></td>
+                                <td colspan='3' align='right'><input type='submit' value='".guil('viewlogwiththissettings')."'></td>
                             </tr>
                         </table>
                         <input type='hidden' name='op' value='setopt'>
                     </form>
                 </div>
 
-                <h3><a href='#'>Upload</a></h3>
+                <h3><a href='#'>".guil('upload')."</a></h3>
                 <div>
                     <form action='' method='POST' enctype='multipart/form-data' name='uploadform'>
-                        <input type='hidden' name='MAX_FILE_SIZE' value='".MAX_FILE_SIZE."'><!-- 512 kB -->
-                        
+                        <input type='hidden' name='MAX_FILE_SIZE' value='".MAX_FILE_SIZE."'>
+
                         <table>
                             <tr>
-                                <td colspan='2'>Wenn du dein Logfile vor dem Upload zip-komprimierst, wird die Verarbeitung wesentlich schneller sein und du kannst mehr Daten hochladen.</td>
+                                <td colspan='2'>".guil('zipfilenotice')."</td>
                             </tr>
                             <tr>
                                 <td colspan='2'>
-                                    Logfile: (max. ".sprintf("%s", 1024 * (MAX_FILE_SIZE / pow(1024, floor((strlen(MAX_FILE_SIZE) - 1) / 3))))."kB): <input type='file' name='logfile'>
+                                    ".guil('logfile').": (max. ".sprintf("%s", 1024 * (MAX_FILE_SIZE / pow(1024, floor((strlen(MAX_FILE_SIZE) - 1) / 3))))."kB): <input type='file' name='logfile'>
                                 </td>
                             </tr>
                             <tr>
-                                <td>Soll dein Log öffentlich zugänglich sein?</td>
+                                <td>".guil('logpublicize')."</td>
                                 <td><input type='checkbox' name='publicize' checked='checked'></td>
                             </tr>
                             <!--tr>
-                                <td>Soll dein Log mit Logs anderer Spieler zusammenführbar sein?</td>
+                                <td>".guil('logmergeable')."</td>
                                 <td><input type='checkbox' name='mergeable' checked='checked'></td>
                             </tr-->
                         </table>
-                        <p style='text-align:right'><input type='submit' value='Upload starten' id='button_start_upload' onClick='document.uploadform.submit()' $disable_ui_element>";
+                        <p style='text-align:right'><input type='submit' value='".guil('startupload')."' id='button_start_upload' onClick='document.uploadform.submit()' $disable_ui_element>";
                         if($demo) {
-                            print "<div style='text-align:right'><small>In der Demo ist der Upload deaktiviert.</small></div>";
+                            print "<div style='text-align:right'><small>".guil('upload_demonotice')."</small></div>";
                         }
                         print "
                         <input type='hidden' name='op' value='logupload'>
@@ -515,24 +530,24 @@
                 </div>";
 
             if($logfiles) {
-                print "<h3><a href='#'>Vorhandene Logs</a></h3>
+                print "<h3><a href='#'>".guil('availablelogs')."</a></h3>
                 <div>
-                    <p>Deine Logfiles:</p>
+                    <p>".guil('yourlogs').":</p>
                     <form action='' method='POST'>
                         <table class='dataTableAutoWidth' id='datatable_optionsLogfiles'>
                             <thead>
                                 <tr>
                                     <th></th>
-                                    <th>Datum</th>
-                                    <th>von</th>
+                                    <th>".guil('date')."</th>
+                                    <th>".guil('from')."</th>
                                     <th></th>
-                                    <th>bis</th>
-                                    <th>Chars</th>
-                                    <th>Kämpfe</th>
-                                    <th>Gegner</th>
-                                    <th>Dateiname</th>
-                                    <th>Upload</th>
-                                    <th>Aktionen</th>
+                                    <th>".guil('to')."</th>
+                                    <th>".guil('chars')."</th>
+                                    <th>".guil('fights')."</th>
+                                    <th>".guil('enemies')."</th>
+                                    <th>".guil('filename')."</th>
+                                    <th>".guil('upload')."</th>
+                                    <th>".guil('actions')."</th>
                                 </tr>
                             </thead>
                             <tbody>";
@@ -555,14 +570,14 @@
                                     <td>
                                         <table cellspacing='0' cellpadding='0'>
                                             <tr>
-                                                <td><span class='ui-icon ui-icon-play' onClick='document.location.href=\"?op=setopt&logfile=".$logfile_id."\"' title='Anzeigen'></span></td>";
+                                                <td><span class='ui-icon ui-icon-play' onClick='document.location.href=\"?op=setopt&logfile=".$logfile_id."\"' title='".guil('view')."'></span></td>";
                         if(!$logfile['public']) {
-                            print "<td><span class='ui-icon ui-icon-unlocked' onClick='document.location.href=\"?op=logpublicize&logfile=".$logfile_id."\"' title='Veröffentlichen'></span></td>";
-                            
+                            print "<td><span class='ui-icon ui-icon-unlocked' onClick='document.location.href=\"?op=logpublicize&logfile=".$logfile_id."\"' title='".guil('publicize')."'></span></td>";
+
                         } else {
-                            print "<td><span class='ui-icon ui-icon-locked' onClick='document.location.href=\"?op=logdepublicize&logfile=".$logfile_id."\"' title='Veröffentlichung aufheben'></span></td>";
+                            print "<td><span class='ui-icon ui-icon-locked' onClick='document.location.href=\"?op=logdepublicize&logfile=".$logfile_id."\"' title='".guil('depublicize')."'></span></td>";
                         }
-                        print "<td><span class='ui-icon ui-icon-disk' onClick='document.location.href=\"?op=logdownload&logfile=".$logfile_id."\"' title='Download'></span></td>
+                        print "<td><span class='ui-icon ui-icon-disk' onClick='document.location.href=\"?op=logdownload&logfile=".$logfile_id."\"' title='".guil('download')."'></span></td>
                                             </tr>
                                         </table>
                                     </td>
@@ -572,24 +587,22 @@
                 print "</tbody>
                         </table>
                         <input type='hidden' name='op' value='logdelete'>
-                        <p style='text-align:left'><input type='submit' value='Gewählte Logfiles löschen' $disable_ui_element></p>";
+                        <p style='text-align:left'><input type='submit' value='".guil('deletechosenlogs')."' $disable_ui_element></p>";
                         if($demo) {
-                            print "<div style='text-align:left'><small>In der Demo ist das Löschen deaktiviert.</small></div>";
+                            print "<div style='text-align:left'><small>".guil('delete_demonotice')."</small></div>";
                         }
                 print "</form>
                 </div>";
             }
-            print "<h3><a href='#'>Bugreport senden</a></h3>
+            print "<h3><a href='#'>".guil('sendbugreport')."</a></h3>
                 <div>
-                    <p>Batalyser ist noch in einem sehr frühen Entwicklungsstatium, es ist daher sehr wahrscheinlich, dass du Bugs finden wirst. Wenn dem so ist, freu ich mich über deine Meldung!</p>
-                    <p>Deine Nachricht wird automatisch ins <a href='http://batalyser.net/forum/viewforum.php?f=4'>Bugreports-Forum</a> gepostet. Wenn du im Forum angemeldet bist unter deinem Namen, ansonsten als Gast.
-                    Es werden automatisch bestimmte Session-Daten ermittelt (mit welchem User bist du angemeldet, welches Log schaust du grade an, welche Optionen sind gesetzt..) und mir zugeschickt, diese werden aber nicht im Forum veröffentlicht.</p>
+                    ".guil('bugreport_explanation')."
                     <form action='' method='POST'>
                         <table>
-                            <tr><td valign='top'>Eine kurze Überschrift:</td><td><input type='text' name='subject' maxlength='40' size='40'></td></tr>
-                            <tr><td valign='top'>Beschreibe hier den Fehler:</td><td><textarea name='bugreport' cols='70' rows='6'></textarea></td></tr>
-                            <tr><td>Deine E-Mail-Adresse (optional):</td><td><input type='text' name='email' size='70' value='".($_SESSION['user_email'])."'></tr>
-                            <tr><td colspan='2' align='right'>Vielen Dank! <input type='submit'></td></tr>
+                            <tr><td valign='top'>".guil('bugreport_shorttitle').":</td><td><input type='text' name='subject' maxlength='40' size='40'></td></tr>
+                            <tr><td valign='top'>".guil('bugreport_description').":</td><td><textarea name='bugreport' cols='70' rows='6'></textarea></td></tr>
+                            <tr><td>".guil('bugreport_yourmail').":</td><td><input type='text' name='email' size='70' value='".($_SESSION['user_email'])."'></tr>
+                            <tr><td colspan='2' align='right'>".guil('thankyou')." <input type='submit'></td></tr>
                         </table>
                         <input type='hidden' name='op' value='bugreport'>
                     </form>
@@ -597,28 +610,22 @@
             </div><!-- accordion options -->
         </div><!-- dialog options -->
 
-        <div id='dialog_upload'>
-            <p>Der Upload wird gestartet. Im Anschluss wird das Combatlog geparst. Das kann einige Minuten dauern, bitte hab ein wenig Geduld.</p>
-            <p>Wenn der Parser fertig ist, wird dieses Fenster geschlossen und der Einstellungsdialog angezeigt.</p>
-        </div>
+        <div id='dialog_upload'>".guil('dialog_upload')."</div>
 
         <div id='dialog_help'>
             <img src='http://geekandpoke.typepad.com/.a/6a00d8341d3df553ef014e8b8f1c5b970d-800wi' alt=''>
         </div>";
 
     if(! $_SESSION['min_fight_duration'] || !$_SESSION['log_id']) {
-        endofpage();
+        include("footer.php");
     }
 
     // at this point we have a logged in user, a chosen logfile and a minimum fight duration
     // we are able to gather logdata now
-    
-    $benchmark->snapshot('before_loading_parser');
 
     if(!isset($parser)) {
         $parser = new Parser($logfiles[$_SESSION['log_id']]['filename'], $_SESSION['log_id']);
     }
-    $benchmark->snapshot('after_loading_parser');
 
     if(count($parser->players)<1) {
         header("Location: ?op=setopt&logfile=&message=Das Logfile enthält keine Chardaten");
@@ -626,7 +633,7 @@
     }
 
     unset($res);
-    
+
     print "<div class='accordion'>";
     foreach(array_keys($parser->players) as $char) {
         if(!$char || !$parser->players[$char]['fights']) {
@@ -639,36 +646,36 @@
 
         $min_id = $parser->players[$char]['min_id'];
         $max_id = $parser->players[$char]['max_id'];
-       
+
         $summary_duration = 0;
         $summary_damage   = 0;
         $summary_threat   = 0;
         $summary_healed   = 0;
-        
+
         $fight_tab_links = '';
-        
+
         foreach($parser->players[$char]['fights'] as $fight) {
             $fight_start_id = $fight['start_id'];
             $fight_end_id = $fight['end_id'];
-            
+
             if(!$min_timestamp) {
                 $min_timestamp = $fight['start_timestamp'];
             }
             $max_timestamp = $fight['end_timestamp'];
-            
+
             $fight_nr++;
             if($fight['end_timestamp']>0 && $fight['start_timestamp']>0) {
                 $single_fight_duration = $fight['end_timestamp'] - $fight['start_timestamp'];
-                
+
                 // collect data for summary tab
                 $summary_duration += $single_fight_duration;
                 $summary_damage += $fight['sum']['damage'];
                 $summary_threat += $fight['sum']['threat'];
                 $summary_healed += $fight['sum']['healed'];
-                
+
                 if($single_fight_duration >= $_SESSION['min_fight_duration']) {
                     $fights_displayed++;
-                    
+
                     // Dauer lesbar machen
                     $__time = $single_fight_duration;
                     $hours = floor($__time / (60*60));
@@ -676,57 +683,54 @@
                     $minutes = floor($__time / (60));
                     $__time = $__time - $minutes * 60;
                     $seconds = $__time;
-                
-                    $fight_title  = "Kampf ".$fight_nr;
-                    $fight_title .= ": Dauer ".sprintf('%s:%02s:%02s',$hours,$minutes,$seconds).", ";
-                    $fight_title .= "am ".date('d.m.', $fight['start_timestamp'])." von ".date('H:i:s', $fight['start_timestamp'])." bis ".date('H:i:s', $fight['end_timestamp']);
+
+                    $fight_title  = guil('fight')." ".$fight_nr;
+                    $fight_title .= ": ".guil('duration')." ".sprintf('%s:%02s:%02s',$hours,$minutes,$seconds).", ";
+                    $fight_title .= guil('at')." ".date('d.m.', $fight['start_timestamp'])." ".guil('from')." ".date('H:i:s', $fight['start_timestamp'])." ".guil('to')." ".date('H:i:s', $fight['end_timestamp']);
                     $fight_title .= " [".round($fight['sum']['damage'] / $single_fight_duration, 2)." DPS ";
                     $fight_title .= "| ".round($fight['sum']['threat'] / $single_fight_duration, 2)." TPS ";
                     $fight_title .= "| ".round($fight['sum']['healed'] / $single_fight_duration, 2)." HPS ] ";
                     if($fight['sum']['damage']>0) {
-                        $fight_title .= $fight['sum']['damage']." Schaden verursacht, ";
+                        $fight_title .= $fight['sum']['damage']." ".guil('damagedone').", ";
                     }
                     if($fight['sum']['healed']>0) {
-                        $fight_title .= $fight['sum']['healed']." Punkte geheilt, ";
+                        $fight_title .= $fight['sum']['healed']." ".guil('healdone').", ";
                     }
-                    $fight_title .= $fight['sum']['threat']." Bedrohung erzeugt.";
-                    
+                    $fight_title .= $fight['sum']['threat']." ".guil('threatdone').".";
+
                     $fight_tab_links .= "<h3><a href='ajax_accordion.php?char=".$char."&log_id=".$_SESSION['log_id']."&fight=".$fight['start_id']."'>".$fight_title."</a></h3><div><img src='../../images/loading.gif' alt='Loading...'> Loading...</div>";
-                        
-                    $benchmark->snapshot('fight_'.$fight_nr.'_printed');
                 } else {
                     $fights_hidden++;
                 }
             }
         }
-        
-        print "<h2><a name='stats_for_".$_char."'>Damagestats für ".$char." (".$fights_displayed." ".($fights_displayed==1?"Kampf":"Kämpfe")." angezeigt, ".$fights_hidden." versteckt)</a></h2>
-                    <div> <!-- empty div that fixes accordion width bug -->                                                                                                                     
-                        <div id='accordion_ajax'>";                                                                                                                                             
+
+        print "<h2><a name='stats_for_".$_char."'>".guil('damagestatsfor')." ".$char." (".$fights_displayed." ".($fights_displayed==1?guil('fight'):guil('fights'))." ".guil('shown').", ".$fights_hidden." ".guil('hidden').")</a></h2>
+                    <div> <!-- empty div that fixes accordion width bug -->
+                        <div id='accordion_ajax'>";
         print $fight_tab_links;
 
         // Gesamt
         if($fights_displayed<1 && $fight_nr>0) {
-            print "Tipp: Wenn keine einzelnen Kämpfe angezeigt werden, dann prüfe ob du in den Optionen eine zu hohe Mindest-Kampfdauer gewählt hast.";
+            print guil('tip_toolowminfightduration'); "Tipp: Wenn keine einzelnen Kämpfe angezeigt werden, dann prüfe ob du in den Optionen eine zu hohe Mindest-Kampfdauer gewählt hast.";
         }
 
         $tabs = array();
-        $benchmark->snapshot('before_summary');
-        
-        $summary_title  = "Gesamtes Log: ";
-        $summary_title .= "Dauer ".seconds_to_readable($summary_duration)." (aktiv), ";
+
+        $summary_title  = guil('logsummary').": ";
+        $summary_title .= guil('duration')." ".seconds_to_readable($summary_duration)." (".guil('active')."), ";
         if($summary_duration) {
-            $summary_title .= "am ".date('d.m.', $min_timestamp)." zwischen ".date('H:i:s', $min_timestamp)." und ".date('H:i:s', $max_timestamp);
+            $summary_title .= guil('at')." ".date('d.m.', $min_timestamp)." ".guil('between')." ".date('H:i:s', $min_timestamp)." ".guil('and')." ".date('H:i:s', $max_timestamp);
             $summary_title .= " [".round($summary_damage / $summary_duration, 2)." DPS ";
             $summary_title .= "| ".round($summary_threat / $summary_duration, 2)." TPS ";
             $summary_title .= "| ".round($summary_healed / $summary_duration, 2)." HPS ] ";
             if($summary_damage>0) {
-                $summary_title .= $summary_damage." Schaden verursacht, ";
+                $summary_title .= $summary_damage." ".guil('damagedone').", ";
             }
             if($summary_healed>0) {
-                $summary_title .= $summary_healed." Punkte geheilt, ";
+                $summary_title .= $summary_healed." ".guil('healdone').", ";
             }
-            $summary_title .= $summary_threat." Bedrohung erzeugt.";
+            $summary_title .= $summary_threat." ".guil('threatdone').".";
         }
         print "<h3><a href='ajax_accordion.php?char=".$char."&log_id=".$_SESSION['log_id']."'>".$summary_title."</a></h3><div><img src='../../images/loading.gif' alt='Loading...'> Loading...</div>";
 
@@ -734,16 +738,15 @@
         print "</div>"; // accordion
     } // foreach $char
     print "</div>"; // accordion
-    
-    
+
+
 
     sql_logout();
     unset($guil);
     unset($output_accordion_page);
     unset($parser);
-    $benchmark->snapshot('sum_printed');
 
-    endofpage();
+    include("footer.php");
 
     function cachefilename_pixelmap($start_id, $end_id, $section, $snd_sections, $char, $conditions, $eventtext=1, $dim_x=1500, $dim_y=300) {
         if(isset($snd_sections) && is_array($snd_sections)) {
@@ -762,7 +765,7 @@
 
     function pixelmap($start_id, $end_id, $section, $snd_sections, $char, $conditions, $eventtext=1, $dim_x=1500, $dim_y=300) {
         global $cacherenew;
-        
+
         $parser = new Parser($logfiles[$_SESSION['log_id']]['filename'], $_SESSION['log_id']);
         $parser->read_loglines($_GET['min_id'], $_GET['max_id']);
         $parser->gather_logdata();
@@ -836,7 +839,7 @@
         if($max_y) {
             $x_faktor = ($dim_x - $x_offset) / ($max_x+1);
             $y_faktor = ($dim_y - $y_offset) / ($max_y+1);
-            
+
             $image = imagecreatetruecolor ($dim_x+50, $dim_y);
             $color['damage-heal']         = imagecolorallocate($image, 255,   0,   0);
             $color['damage_received']     = imagecolorallocate($image, 180,   0,   0);
@@ -849,7 +852,7 @@
             $color['red']                 = imagecolorallocate($image, 255,   0,   0);
             $color['black']               = imagecolorallocate($image, 0,     0,   0);
             $color['white']               = imagecolorallocate($image, 255, 255, 255);
-            
+
             // white bg
             imagefilledrectangle($image, 0, 0, $dim_x+50, $dim_y, $color['white']);
             // title
@@ -869,13 +872,13 @@
                     imagestring($image, 2, $x_offset + ($x_faktor*ceil($r)), $dim_y-($y_offset), ceil($r), $color['black']);
                 }
             }
-            
+
             // ruler y-axis
             imagestringup($image, 2, $x_offset - 14, $dim_y-($y_offset+2), $section, $color['black']);
             for($r=0; $r<=$max_y; $r+=$max_y/15) {
                 imagestring($image, 2, 1, $dim_y-$y_offset-($y_faktor*ceil($r)), ceil($r), $color['black']);
             }
-            
+
             // section-graph
             if(isset($snd_sections)) {
                 $draw_sections = $snd_sections;
@@ -883,7 +886,7 @@
             } else {
                 $draw_sections = array($section);
             }
-            
+
             $s2=0;
             $line_value = array();
             foreach($draw_sections as $draw_section) {
@@ -892,20 +895,20 @@
                 $sum = 0;
                 $s2overall = 0;
                 $draw_section_operation = "";
-            
+
                 if($draw_section == $section) {
                     $s2overall = $s1overall;
                 } elseif(preg_match('/(.*?)_overall$/', $draw_section)) {
                     $s2overall = 1;
                     $draw_section = $matches[1];
                 }
-            
+
                 if(preg_match('#^(.*?)([*/+-])(.*)$#', $draw_section, $matches)) {
                     $draw_section_factor1 = $matches[1];
                     $draw_section_operation = $matches[2];
                     $draw_section_factor2 = $matches[3];
                 }
-            
+
                 $last_fetch = $start_id;
                 $parser->read_loglines($start_id, $end_id);
                 $parser->gather_logdata();
@@ -958,7 +961,7 @@
                     $s2++;
                 }
             }
-            
+
             // events
             $t=0;
             $last_fetch = $start_id;
@@ -1020,19 +1023,6 @@
         readfile($cache_filename);
     }
 
-    // GUILanguage translation
-    function guil($term) {
-        global $guil;
-        
-        if($guil[$_SESSION['language']][$term]) {
-            return $guil[$_SESSION['language']][$term];
-        } elseif($guil['de'][$term]) {
-            return $guil['de'][$term];
-        } else {
-            return "TRANSLATION_MISSING";
-        }
-    }
-    
     function seconds_to_readable($seconds) {
         $time = $seconds;
         $hours = floor($time / (60*60));
@@ -1042,25 +1032,5 @@
         $seconds = $time;
 
         return sprintf('%s:%02s:%02s',$hours,$minutes,$seconds);
-    }
-
-    function endofpage() {
-        global $openOptions, $logfiles, $benchmark;
-
-        include("footer.php");
-
-        $benchmark->snapshot('endofpage');
-        $benchmark->summary();
-        if($fh = fopen('benchmarks-size2mem', 'a')) {
-            $filename = $logfiles[$_SESSION['log_id']]['filename'];
-            $file_size = @filesize($filename);
-            $peak_mem = memory_get_peak_usage();
-            if($file_size) {
-                $quotient = $peak_mem/$file_size;
-            }
-            fwrite($fh, sprintf("% 3s % 8s % 8s % 5.2f %s\n", $_SESSION['log_id'], $peak_mem, $file_size, $quotient, $filename));
-            fclose($fh);
-        }
-        exit();
     }
 ?>

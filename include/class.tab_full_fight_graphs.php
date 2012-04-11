@@ -9,7 +9,7 @@
 
             parent::Tab(
                 $name, 
-                'Kampfverlauf (Graphen)', 
+                guil('fightprogress').' ('.guil('graphs').')', 
                 '', 
                 $data,
                 $html,

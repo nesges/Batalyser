@@ -1,4 +1,11 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+v0.7
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* replaced every language dependend text with guil() 
+* added include/language.en.php
+* added cookies to save language and min_fight_duration for 30 days
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 v0.6
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 * removed threat values from Tab_Enemies_Damage_to_Char
@@ -7,8 +14,9 @@ v0.6
 * added Threat/DMG on Tab_Char_DpsTps_per_Ability
 * publicizing logs is now available
 * fixed some possible sql insertion attacks
-* moved some basic initialisation from report.php, accordion_ajax.phph to include/init.php
-* removed function piechart 
+* moved some basic initialisation from report.php, accordion_ajax.phph 
+  to include/init.php
+* removed function piechart
 * replaced gd-piecharts with piechart_google.php
 * added damage/ability piechart on Tab_Char_DpsTps_per_Ability
 * added heal/ability piechart on Tab_Char_HpsTps_per_Ability 
@@ -30,6 +38,7 @@ v0.5
 * colorcoding of Tab_Full_Fight_Stats rows
 * colorcoding of Tab_DpsHpsTps_per_Target target-name cells
 * all fight-accordions now loaded per ajax
-* removed stats-page caching. it's not needed anymore because all accordions are cached separately
+* removed stats-page caching. it's not needed anymore because all 
+  accordions are cached separately
 * added unlinking of cachefiles to logdelete
 * added support for zip-upload

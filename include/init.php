@@ -6,7 +6,6 @@
     unset($db); // no need to keep logindata in memory
     
     include("include/constants.php");
-    include("include/language.de.php");
     include("include/class.parser.php");
     
     // limit upload to 524288 Bytes (512kB) / 1048576 Bytes (1MB)
@@ -23,5 +22,27 @@
     $cacherenew=0;
     if(isset($_GET['cacherenew'])) {
         $cacherenew = $_GET['cacherenew'];
+    }
+
+    // GUILanguage translation
+    function guil($term) {
+        global $guil;
+        
+        if(!$guil) {
+            include_once("include/language.de.php");
+            if($_SESSION['language'] != 'de' && file_exists("include/language.".$_SESSION['language'].".php")) {
+                include_once("include/language.".$_SESSION['language'].".php");
+            }
+        }
+
+        if($guil[$_SESSION['language']][$term]) {
+            return $guil[$_SESSION['language']][$term];
+        } elseif($guil['de'][$term]) {
+            return $guil['de'][$term];
+        } else {
+            // notification to start with, likely to be removed later on
+            // mail('nesges@gmail.com', 'Batalyser: Missing translation for "'.$term.'"', '');
+            return "TRANSLATION_MISSING ($term) [".$SESSION['language']."]";
+        }
     }
 ?>

@@ -70,8 +70,8 @@
 
             parent::Tab(
                 $name, 
-                'DPS/HPS/TPS pro Ziel', 
-                array('Ziel', 'Damage', 'Heal', 'Threat', 'DPS', 'HPS', 'TPS'), 
+                guil('xpspertarget'), 
+                array(guil('target'), guil('damage'), guil('heal'), guil('threat'), 'DPS', 'HPS', 'TPS'), 
                 $data,
                 $html,
                 $class

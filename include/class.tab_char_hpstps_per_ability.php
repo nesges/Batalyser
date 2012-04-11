@@ -71,16 +71,16 @@
                     <tr>
                         <td>
                             <table>
-                                <tr><td>Normal:         </td><td>".$overall['hit']."</td>       <td>(".round(100/$overall['count']*$overall['hit'],     2)."%)</td></tr>
-                                <tr><td>Kritisch:       </td><td>".$overall['crit']."</td>      <td>(".round(100/$overall['count']*$overall['crit'],    2)."%)</td></tr>
-                                <tr><td>HPS:            </td><td colspan='2'>".round($overall['heal']/$duration, 2)."</td></tr>
+                                <tr><td>".guil('normal').": </td><td>".$overall['hit']."</td>       <td>(".round(100/$overall['count']*$overall['hit'],     2)."%)</td></tr>
+                                <tr><td>".guil('crit').":   </td><td>".$overall['crit']."</td>      <td>(".round(100/$overall['count']*$overall['crit'],    2)."%)</td></tr>
+                                <tr><td>HPS:                </td><td colspan='2'>".round($overall['heal']/$duration, 2)."</td></tr>
                             </table>
                         </td>
                         <td valign='top'>
                             <iframe width='450' height='300' frameborder='0' scrolling='no' src='piechart_google.php?";
-                $html .=  "Treffer=".$overall['hit'];
-                $html .= "&Kritisch=".$overall['crit'];
-                $html .= "&pietitle=Heiltrefferstatistik&pieheight=300&piewidth=450'></iframe>
+                $html .=  guil('normal')."=".$overall['hit'];
+                $html .= "&".guil('crit')."=".$overall['crit'];
+                $html .= "&pietitle=".guil('healhitstatistic')."&pieheight=300&piewidth=450'></iframe>
                         </td>
                         <td>
                             <iframe width='450' height='300' frameborder='0' scrolling='no' src='piechart_google.php?";
@@ -88,7 +88,7 @@
                     $piedata[] = $ability_name."=".$ability['heal'];
                 }
                 $html .= join('&', $piedata);
-                $html .= "&pietitle=Heilung pro Fähigkeit&pieheight=300&piewidth=450'></iframe>
+                $html .= "&pietitle=".guil('healperability')."&pieheight=300&piewidth=450'></iframe>
                         </td>
                     </tr>
                 </table>
@@ -97,8 +97,8 @@
 
             parent::Tab(
                 $name, 
-                'Heal pro Fähigkeit', 
-                array('Fähigkeit', 'Use', 'Heal', 'HPS', 'Heal/Use', 'Threat', 'TPS', 'Threat/Use', 'Threat/Heal',
+                guil('healperability'), 
+                array(guil('ability'), 'Use', 'Heal', 'HPS', 'Heal/Use', 'Threat', 'TPS', 'Threat/Use', 'Threat/Heal',
                         'Hit', 'Crit', 'Hit %', 'Crit %'), 
                 $data,
                 $html,

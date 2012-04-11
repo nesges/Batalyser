@@ -1,6 +1,5 @@
 <?
-    global $cache_stats_filename, $openOptions, $duration, $logfiles, $benchmark;
-    session_start();
+    global $cache_stats_filename, $openOptions, $duration, $logfiles;
     
     $jquery_common_init = '
                 $( ".accordion" ).accordion({
@@ -164,13 +163,13 @@
                             print "modal: false,\n";
                         }
                     ?>
-                    title: 'Optionen',
+                    title: '<?=guil('dialog_options_title')?>',
                     width: 800,
                     position: 'top'
                 });
                 $( "#dialog_help" ).dialog({
                     autoOpen: false,
-                    title: 'Hilfe',
+                    title: '<?=guil('dialog_help_title')?>',
                     width: 800,
                     position: 'top'
                 });
@@ -187,19 +186,19 @@
                     return false;
                 });
                 $( "#dialog_login" ).dialog({
-                    title: 'Login',
+                    title: '<?=guil('dialog_login_title')?>',
                     modal: true
                 });
                 $( "#dialog_error" ).dialog({
-                    title: 'Oops, ein Fehler!',
+                    title: '<?=guil('dialog_error_title')?>',
                     modal: true
                 });
                 $( "#dialog_message" ).dialog({
-                    title: 'Eine Nachricht für Dich',
+                    title: '<?=guil('dialog_message_title')?>',
                     modal: true
                 });
                 $( "#dialog_upload" ).dialog({
-                    title: 'Upload gestartet',
+                    title: '<?=guil('dialog_upload_title')?>',
                     autoOpen: false,
                     modal: true
                 });
@@ -208,3 +207,4 @@
         </script>
     </body>
 </html>
+<?exit()?>

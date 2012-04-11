@@ -116,15 +116,15 @@
                             </tr>";
                 }
             }
-            $html = "<p>In den in- und Verlauf-Spalten wird ein evtl. vorhandener Companion nicht berücksichtigt.</p>
-                     <p><img src='?op=pixelmap&min_id=".$start_id."&max_id=".$end_id."&section=damage-heal_overall&secondary_sections[]=heal&char=".$char."&conditions_lvalue[]=target_name&conditions_rvalue[]=".$char."&eventtext=".$eventtext."' alt='Damageverlauf (in)'></p>
-                     <p><img src='?op=pixelmap&min_id=".$start_id."&max_id=".$end_id."&section=damage-heal_overall&secondary_sections[]=damage&char=".$char."&conditions_lvalue[]=target_name&conditions_rvalue[]=".$char."&eventtext=".$eventtext."' alt='Damageverlauf (in)'></p>";
+            $html = "<p>".guil('fullfightstats_note_companion')."</p>
+                     <p><img src='?op=pixelmap&min_id=".$start_id."&max_id=".$end_id."&section=damage-heal_overall&secondary_sections[]=heal&char=".$char."&conditions_lvalue[]=target_name&conditions_rvalue[]=".$char."&eventtext=".$eventtext."' alt='".guil('incdamageprogress')."'></p>
+                     <p><img src='?op=pixelmap&min_id=".$start_id."&max_id=".$end_id."&section=damage-heal_overall&secondary_sections[]=damage&char=".$char."&conditions_lvalue[]=target_name&conditions_rvalue[]=".$char."&eventtext=".$eventtext."' alt='".guil('incdamageprogress')."'></p>";
 
 
             parent::Tab(
                 $name, 
-                'Kampfverlauf', 
-                array('ID', 'Zeit', 'Quelle', 'Ziel', 'Fähigkeit', 'Effekt', 'Schadensart', 'DMG (out)', 'Heal(out)', 'Threat', 'DMG (in)', 'Heal (in)', '-HP Verlauf', 'Threat Verlauf'), 
+                guil('fightprogress'), 
+                array('ID', guil('time'), guil('source'), guil('target'), guil('ability'), guil('effect'), guil('damagetype'), 'DMG (out)', 'Heal(out)', 'Threat', 'DMG (in)', 'Heal (in)', '-HP '.guil('progress'), 'Threat '.guil('progress')), 
                 $data,
                 $html,
                 ($class?$class:'dataTableFullFightStats')
