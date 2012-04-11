@@ -4,11 +4,11 @@
         die("101");
     }
     
-    $cacherenew = 1;
-    
     $char = str_replace('/', '_insertionattempt_', $_GET['char']);
     $fightnr = str_replace('/', '_insertionattempt_', $_GET['fight']);
     $log_id = str_replace('/', '_insertionattempt_', $_GET['log_id']);
+    
+    include_once("include/init.php");
     
     header('content-type: text/html; charset=iso-8859-1');
     $cache_filename = 'cache/accordion_'.$char.'_'.$log_id.'_'.$fightnr;
@@ -18,9 +18,7 @@
     }
     ob_start();
     
-    include("include/constants.php");
-    include("include/language.de.php");
-    include("include/class.parser.php");
+
     include("include/class.tab.php");
     include("include/class.tab_dpshpstps_per_target.php");
     include("include/class.tab_char_dpstps_per_ability.php");
@@ -28,12 +26,6 @@
     include("include/class.tab_enemies_damage_to_char.php");
     include("include/class.tab_full_fight_stats.php");
     include("include/class.tab_full_fight_graphs.php");
-    
-    $sql_debug=0;
-    $sql_layer_database_mode='new';
-    $sql_layer_database=12;
-    include("../../../sql_layer.php");
-    unset($db); // no need to keep logindata in memory
     
     // since this script is to be called from the main script, we always have a cached serialized parser
     $res = sql_query("select filename from logfile where id=".$log_id);
@@ -90,7 +82,8 @@
             $char,
             $start_id,
             $end_id,
-            'dataTable_ajaxLoaded'
+            'dataTable_ajaxLoaded',
+            ($fight_nr?0:1)
         );
     if($fightnr) {
         $tabs[] = new Tab_Full_Fight_Stats(

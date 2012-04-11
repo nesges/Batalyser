@@ -16,7 +16,7 @@
         <script type="text/javascript" src="js/jquery.dataTables.js"></script>
         <script type="text/javascript" src="js/ColReorderWithResize.js"></script>
         <script type="text/javascript" src="js/ColumnFilterWidgets.js"></script>
-
+        
         <style type="text/css">
             html, body {
                 background: #5b5b5b url(/forum/styles/batalyser/theme/images/outerbg.gif) top left repeat; 

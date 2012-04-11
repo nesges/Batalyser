@@ -1,10 +1,4 @@
 <?
-    // TODO
-    //  Heilerstats
-    //  Tankstats
-    //  Enemy HitMissCrit
-    //  Incoming Damage
-
     session_start();
     
     global $guil, $version;
@@ -28,15 +22,7 @@
     include("include/class.benchmark.php");
     $benchmark = new Benchmark("benchmarks");
     
-    $sql_debug=0;
-    $sql_layer_database_mode='new';
-    $sql_layer_database=12;
-    include("../../../sql_layer.php");
-    unset($db); // no need to keep logindata in memory
-    
-    include("include/constants.php");
-    include("include/language.de.php");
-    include("include/class.parser.php");
+    include_once("include/init.php");
     include("include/class.tab.php");
     include("include/class.tab_dpshpstps_per_target.php");
     include("include/class.tab_char_dpstps_per_ability.php");
@@ -45,17 +31,6 @@
     include("include/class.tab_full_fight_stats.php");
     include("include/class.tab_full_fight_graphs.php");
 
-    // limit upload to 524288 Bytes (512kB) / 1048576 Bytes (1MB)
-    // in the upload form there are additional mentions of MAX_FILE_SIZE
-    define("MAX_FILE_SIZE", 1048576*3);
-    ini_set("upload_max_filesize", MAX_FILE_SIZE);
-    ini_set("post_max_size", MAX_FILE_SIZE);
-
-    $languages['de'] = 'Deutsch';
-    $languages['en'] = 'Englisch';
-    $languages['fr'] = 'Französisch';
-    $languages['other'] = 'Andere';
-    
     $disable_ui_element="";
     if($demo) {
         $disable_ui_element = "disabled='disabled'";
@@ -77,11 +52,6 @@
         $openOptions = $_POST['options'];
     } elseif(isset($_GET['options'])) {
         $openOptions = $_GET['options'];
-    }
-
-    $cacherenew=0;
-    if(isset($_GET['cacherenew'])) {
-        $cacherenew = $_GET['cacherenew'];
     }
 
     $message="";
@@ -162,7 +132,7 @@
             break;
         case "logdelete":
             if(!$demo) {
-                $log_id_list = join(',', $_POST['delete_logfile']);
+                $log_id_list = mysql_escape_string(join(',', $_POST['delete_logfile']));
                 // check for user_id
                 $res = sql_query("select id, filename from logfile where id in (".$log_id_list.")
                     and uploader_id = ".$_SESSION['user_id']);
@@ -187,7 +157,7 @@
             header("Location: ".$_SERVER['PHP_SELF']."?logfile=&options=1");
             exit();
         case "logdownload":
-            $res = sql_query("select filename from logfile where id=".$_GET['logfile']);
+            $res = sql_query("select filename from logfile where id=".mysql_escape_string($_GET['logfile']));
             list($filename) = sql_fetch_row($res);
             header("Expires: 0"); 
             header("Cache-Control: must-revalidate, post-check=0, pre-check=0"); 
@@ -197,14 +167,22 @@
             header("Content-Transfer-Encoding: binary"); 
             readfile($filename);
             exit();
+        case "logpublicize":
+            sql_query("update logfile set public=1 where id = '".mysql_escape_string($_GET['logfile'])."' and uploader_id='".$_SESSION['user_id']."'");
+            header("Location: ".$_SERVER['PHP_SELF']."?op=noop&message=Dein Log ist jetzt öffentlich unter der Adresse ".urlencode('http://'.$_SERVER['SERVER_NAME'].$_SERVER['PHP_SELF']."?op=setopt&logfile=".$_GET['logfile'])." erreichbar.");
+            exit();
+        case "logdepublicize":
+            sql_query("update logfile set public=0 where id = '".mysql_escape_string($_GET['logfile'])."' and uploader_id='".$_SESSION['user_id']."'");
+            header("Location: ".$_SERVER['PHP_SELF']."?op=noop&message=Dein Log ist jetzt nicht mehr öffentlich erreichbar.");
+            exit();
         case "logupload":
             if($_SESSION['user_id'] && !$demo) {
                 if($_FILES['logfile']['tmp_name']) {
                     @mkdir('upload/'.$_SESSION['user_id']);
                     $filename = 'upload/'.$_SESSION['user_id'].'/'.basename($_FILES['logfile']['name']);
                     if(move_uploaded_file($_FILES['logfile']['tmp_name'], $filename)) {
-                        sql_query("insert into logfile (uploader_id, filename, timestamp)
-                            values (".$_SESSION[user_id].", '".$filename."', now())");
+                        sql_query("insert into logfile (uploader_id, filename, timestamp, public, mergeable)
+                            values (".$_SESSION[user_id].", '".$filename."', now(), ".($_GET['publicize']?1:0).", ".($_GET['mergeable']?1:0).")");
                         $res = sql_query("select max(id) from logfile where uploader_id = ".$_SESSION[user_id]);
                         list($logfile_id) = sql_fetch_row($res);
                         $_SESSION['log_id'] = $logfile_id;
@@ -298,7 +276,7 @@
                 $subject = $_POST['subject'].' ('.preg_replace('#/?batalyser/?#', '', dirname($_SERVER['REQUEST_URI'])).' v'.$version.')';
                 
                 sql_query("insert into bugreport (subject, message, user_id, logfile_id) 
-                    values ('".$subject."', '".$_POST['bugreport']."', '".$_SESSION['user_id']."', '".$_SESSION['log_id']."')");
+                    values ('".$subject."', '".mysql_escape_string($_POST['bugreport'])."', '".$_SESSION['user_id']."', '".$_SESSION['log_id']."')");
                 $res = sql_query("select max(id) from bugreport where user_id='".$_SESSION['user_id']."'");
                 list($bugreport_id) = sql_fetch_row($res);
 
@@ -323,19 +301,20 @@
 
     if($_SESSION['user_id']) {
         // select users logfiles
-        $res = sql_query("select id, UNIX_TIMESTAMP(timestamp), notes, filename, uploader_id
+        $res = sql_query("select id, UNIX_TIMESTAMP(timestamp), notes, filename, uploader_id, public
             from logfile
             where (
                 uploader_id = ".$_SESSION['user_id']."
                 or id = '".$_SESSION['log_id']."'
             )
             order by timestamp desc");
-        while(list($id, $timestamp, $notes, $filename, $uploader_id) = sql_fetch_row($res)) {
+        while(list($id, $timestamp, $notes, $filename, $uploader_id, $public) = sql_fetch_row($res)) {
             // if(file_exists($filename)) {
                 $logfiles[$id]['timestamp'] = $timestamp;
                 $logfiles[$id]['notes'] = $notes;
                 $logfiles[$id]['filename'] = $filename;
                 $logfiles[$id]['uploader_id'] = $uploader_id;
+                $logfiles[$id]['public'] = $public;
             // }
         }
     }
@@ -375,8 +354,7 @@
 
             exit();
         case "piechart":
-            header("Content-type: image/png");
-            piechart($_GET['values'], $_GET['labels']);
+            header("Location: piechart.php?".$_SERVER['QUERY_STRING']);
             exit();
     }
 
@@ -425,7 +403,7 @@
                 or public=1)");
         $found = sql_num_rows($res);
         list($viewing_allowed) = sql_fetch_row($res);
-        if($found && ! $viewing_allowed) {
+        if(!$viewing_allowed) {
             header("Location: ?op=setopt&logfile=&message=Das Logfile wurde nicht von dir hochgeladen und ist nicht (mehr) öffentlich zugänglich.");
             exit();
         }
@@ -508,7 +486,25 @@
                 <div>
                     <form action='' method='POST' enctype='multipart/form-data' name='uploadform'>
                         <input type='hidden' name='MAX_FILE_SIZE' value='".MAX_FILE_SIZE."'><!-- 512 kB -->
-                        <p>Logfile hochladen (max. ".sprintf("%s", 1024 * (MAX_FILE_SIZE / pow(1024, floor((strlen(MAX_FILE_SIZE) - 1) / 3))))."kB): <input type='file' name='logfile'></p>
+                        
+                        <table>
+                            <tr>
+                                <td colspan='2'>Wenn du dein Logfile vor dem Upload zip-komprimierst, wird die Verarbeitung wesentlich schneller sein und du kannst mehr Daten hochladen.</td>
+                            </tr>
+                            <tr>
+                                <td colspan='2'>
+                                    Logfile: (max. ".sprintf("%s", 1024 * (MAX_FILE_SIZE / pow(1024, floor((strlen(MAX_FILE_SIZE) - 1) / 3))))."kB): <input type='file' name='logfile'>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Soll dein Log öffentlich zugänglich sein?</td>
+                                <td><input type='checkbox' name='publicize' checked='checked'></td>
+                            </tr>
+                            <!--tr>
+                                <td>Soll dein Log mit Logs anderer Spieler zusammenführbar sein?</td>
+                                <td><input type='checkbox' name='mergeable' checked='checked'></td>
+                            </tr-->
+                        </table>
                         <p style='text-align:right'><input type='submit' value='Upload starten' id='button_start_upload' onClick='document.uploadform.submit()' $disable_ui_element>";
                         if($demo) {
                             print "<div style='text-align:right'><small>In der Demo ist der Upload deaktiviert.</small></div>";
@@ -541,21 +537,37 @@
                             </thead>
                             <tbody>";
                 foreach($logfiles as $logfile_id => $logfile) {
-                    print "<tr>
-                                <td><input type='checkbox' name='delete_logfile[]' value='".$logfile_id."'></td>";
-                    preg_match('/\[(\d\d\.\d\d\.) (\d\d:\d\d)-(\d\d:\d\d)\] (.*?): (\d+) Kämpfe, (\d+) Gegner/', $logfile['notes'], $matches);
-                    print "
-                                <td>".$matches[1]."</td>
-                                <td>".$matches[2]."</td>
-                                <td>-</td>
-                                <td>".$matches[3]."</td>
-                                <td>".$matches[4]."</td>
-                                <td>".$matches[5]."</td>
-                                <td>".$matches[6]."</td>
-                                <td>".preg_replace('#/?upload(/'.$_SESSION['user_id'].')?/?#', '', $logfile['filename'])."</td>
-                                <td>".date('Y-m-d H:i:s', $logfile['timestamp'])."</td>
-                                <td><a href='?op=setopt&logfile=".$logfile_id."'>[Anzeigen]</a> <a href='?op=logdownload&logfile=".$logfile_id."'>[Download]</a></td>
-                            </tr>";
+                    // exclude public logs
+                    if($logfile['uploader_id']==$_SESSION['user_id']) {
+                        print "<tr>
+                                    <td><input type='checkbox' name='delete_logfile[]' value='".$logfile_id."'></td>";
+                        preg_match('/\[(\d\d\.\d\d\.) (\d\d:\d\d)-(\d\d:\d\d)\] (.*?): (\d+) Kämpfe, (\d+) Gegner/', $logfile['notes'], $matches);
+                        print "
+                                    <td>".$matches[1]."</td>
+                                    <td>".$matches[2]."</td>
+                                    <td>-</td>
+                                    <td>".$matches[3]."</td>
+                                    <td>".$matches[4]."</td>
+                                    <td>".$matches[5]."</td>
+                                    <td>".$matches[6]."</td>
+                                    <td>".preg_replace('#/?upload(/'.$_SESSION['user_id'].')?/?#', '', $logfile['filename'])."</td>
+                                    <td>".date('Y-m-d H:i:s', $logfile['timestamp'])."</td>
+                                    <td>
+                                        <table cellspacing='0' cellpadding='0'>
+                                            <tr>
+                                                <td><span class='ui-icon ui-icon-play' onClick='document.location.href=\"?op=setopt&logfile=".$logfile_id."\"' title='Anzeigen'></span></td>";
+                        if(!$logfile['public']) {
+                            print "<td><span class='ui-icon ui-icon-unlocked' onClick='document.location.href=\"?op=logpublicize&logfile=".$logfile_id."\"' title='Veröffentlichen'></span></td>";
+                            
+                        } else {
+                            print "<td><span class='ui-icon ui-icon-locked' onClick='document.location.href=\"?op=logdepublicize&logfile=".$logfile_id."\"' title='Veröffentlichung aufheben'></span></td>";
+                        }
+                        print "<td><span class='ui-icon ui-icon-disk' onClick='document.location.href=\"?op=logdownload&logfile=".$logfile_id."\"' title='Download'></span></td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>";
+                    }
                 }
                 print "</tbody>
                         </table>
@@ -1008,60 +1020,6 @@
         readfile($cache_filename);
     }
 
-    function piechart($values, $labels) {
-        global $cacherenew;
-
-        $dim_x = 150;
-        $dim_y = 150;
-        $y_offset = 30;
-
-        $cache_filename = 'cache/piechart_'.join('_', $values).'_'.join('_', $labels).'_'.$dim_x.'x'.$dim_y;
-        if(file_exists($cache_filename) && !$cacherenew==1) {
-            readfile($cache_filename);
-            exit();
-        }
-
-        $image = imagecreatetruecolor ($dim_x, $dim_y + $y_offset);
-        $color[0] =       imagecolorallocate($image, 0,  200,  0); // hit
-        $color[1] =       imagecolorallocate($image, 0,  255,  0); // crit
-        $color[2] =       imagecolorallocate($image, 255,  0,  0); // miss
-        $color[3] =       imagecolorallocate($image, 200,  0,  0); // dodge
-        $color[4] =       imagecolorallocate($image, 150,  0,  0); // parry
-        $color[5] =       imagecolorallocate($image, 100,  0,  0); // deflect
-        $color[6] =       imagecolorallocate($image, 255,204,  0); // immune
-        $color[7] =       imagecolorallocate($image, 0,    0,255);
-        $color[8] =       imagecolorallocate($image, 0,    0,150);
-        $color['black'] = imagecolorallocate($image, 0,    0,  0);
-        $color['white'] = imagecolorallocate($image, 255,255,255);
-
-        // white bg
-        imagefilledrectangle($image, 0, 0, $dim_x, $dim_y+$y_offset, $color['white']);
-
-        $sum=array_sum($values);
-        $start=0;
-        $v=0;
-        foreach($values as $v => $value) {
-            $end = (360 / $sum) * $value + $start;
-            if($start != $end) {
-                imagefilledarc($image, $dim_x/2, $dim_y/2, $dim_x, $dim_y, $start, $end, $color[$v], IMG_ARC_PIE);
-            }
-            $start = $end;
-        }
-        if(count($labels) < 5) {
-            foreach($labels as $l => $label) {
-                //imagestring($image, 2, $l * ($dim_x/count($labels)), $dim_y+1, $label, $color[$l]);
-            }
-        } else {
-            foreach($labels as $l => $label) {
-                imagestring($image, 1, (ceil(($l+1)/2)-1) * ($dim_x/(count($labels)/2)), $dim_y+1 + (($l%2)*12), $label, $color[$l]);
-            }
-        }
-
-        imagepng($image, $cache_filename);
-        imagedestroy($image);
-        readfile($cache_filename);
-    }
-
     // GUILanguage translation
     function guil($term) {
         global $guil;
@@ -1095,7 +1053,7 @@
         $benchmark->summary();
         if($fh = fopen('benchmarks-size2mem', 'a')) {
             $filename = $logfiles[$_SESSION['log_id']]['filename'];
-            $file_size = filesize($filename);
+            $file_size = @filesize($filename);
             $peak_mem = memory_get_peak_usage();
             if($file_size) {
                 $quotient = $peak_mem/$file_size;

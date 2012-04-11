@@ -25,7 +25,7 @@
                     $end_timestamp = $logdata['timestamp'];
                 }
 
-                if(preg_match('/^'.$char.'(:.+)?/', $logdata['source_name'])) {
+                if(preg_match('/^'.$char.'(:(.+))?/', $logdata['source_name'], $matches)) {
                     $ability_name = $logdata['ability_name'];
                     if($logdata['source_type'] == 'companion') {
                         $ability_name = $matches[2].': '.$ability_name;
@@ -59,6 +59,7 @@
                             <td>".$ability['threat']."</td>
                             <td>".round($ability['threat'] / $duration, 2)."</td>
                             <td>".round($ability['threat'] / $ability['count'], 2)."</td>
+                            <td>".round($ability['threat'] / $ability['heal'], 2)."</td>
                             <td>".$ability['hit']."</td>
                             <td>".$ability['crit']."</td>
                             <td>".round(100/$ability['count']*$ability['hit'], 2)."%</td>
@@ -68,18 +69,28 @@
             
                 $html = "<div style='border-top: 1px solid silver'>Gesamt:<table>
                     <tr>
-                        <td rowspan='6' colspan='2'>
-                        <img src='?op=piechart"
-                            ."&labels[0]=Hit"
-                            ."&labels[1]=Crit"
-                            ."&values[0]=".$overall['hit']
-                            ."&values[1]=".$overall['crit']
-                        ."' alt='Hit/Crit/Miss/Dodge..'>
+                        <td>
+                            <table>
+                                <tr><td>Normal:         </td><td>".$overall['hit']."</td>       <td>(".round(100/$overall['count']*$overall['hit'],     2)."%)</td></tr>
+                                <tr><td>Kritisch:       </td><td>".$overall['crit']."</td>      <td>(".round(100/$overall['count']*$overall['crit'],    2)."%)</td></tr>
+                                <tr><td>HPS:            </td><td colspan='2'>".round($overall['heal']/$duration, 2)."</td></tr>
+                            </table>
+                        </td>
+                        <td valign='top'>
+                            <iframe width='450' height='300' frameborder='0' scrolling='no' src='piechart_google.php?";
+                $html .=  "Treffer=".$overall['hit'];
+                $html .= "&Kritisch=".$overall['crit'];
+                $html .= "&pietitle=Heiltrefferstatistik&pieheight=300&piewidth=450'></iframe>
+                        </td>
+                        <td>
+                            <iframe width='450' height='300' frameborder='0' scrolling='no' src='piechart_google.php?";
+                foreach($used_abilities as $ability_name => $ability) {
+                    $piedata[] = $ability_name."=".$ability['heal'];
+                }
+                $html .= join('&', $piedata);
+                $html .= "&pietitle=Heilung pro Fähigkeit&pieheight=300&piewidth=450'></iframe>
                         </td>
                     </tr>
-                    <tr><td>Normal:         </td><td>".$overall['hit']."</td>       <td>(".round(100/$overall['count']*$overall['hit'],     2)."%)</td></tr>
-                    <tr><td>Kritisch:       </td><td>".$overall['crit']."</td>      <td>(".round(100/$overall['count']*$overall['crit'],    2)."%)</td></tr>
-                    <tr><td>HPS:            </td><td colspan='2'>".round($overall['heal']/$duration, 2)."</td></tr>
                 </table>
                 </div>";
             }
@@ -87,7 +98,7 @@
             parent::Tab(
                 $name, 
                 'Heal pro Fähigkeit', 
-                array('Fähigkeit', 'Use', 'Heal', 'HPS', 'Heal/Use', 'Threat', 'TPS', 'Threat/Use',
+                array('Fähigkeit', 'Use', 'Heal', 'HPS', 'Heal/Use', 'Threat', 'TPS', 'Threat/Use', 'Threat/Heal',
                         'Hit', 'Crit', 'Hit %', 'Crit %'), 
                 $data,
                 $html,

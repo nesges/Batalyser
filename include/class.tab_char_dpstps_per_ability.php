@@ -70,6 +70,7 @@
                             <td>".$ability['threat']."</td>
                             <td>".round($ability['threat'] / $duration, 2)."</td>
                             <td>".round($ability['threat'] / $ability['count'], 2)."</td>
+                            <td>".round($ability['threat'] / $ability['damage'], 2)."</td>
                             <td>".($ability['hit']+$ability['crit'])."</td>
                             <td>".$ability['hit']."</td>
                             <td>".$ability['crit']."</td>
@@ -93,36 +94,40 @@
             
                 $html = "<div style='border-top: 1px solid silver'>Gesamt:<table>
                     <tr>
-                        <td rowspan='10' colspan='2'>
-                        <img src='?op=piechart"
-                            ."&labels[0]=Hit"
-                            ."&labels[1]=Crit"
-                            ."&labels[2]=Miss"
-                            ."&labels[3]=Dodge"
-                            ."&labels[4]=Parry"
-                            ."&labels[5]=Deflect"
-                            ."&labels[6]=Resist"
-                            ."&labels[7]=Immune"
-                            ."&values[0]=".$overall['hit']
-                            ."&values[1]=".$overall['crit']
-                            ."&values[2]=".$overall['miss']
-                            ."&values[3]=".$overall['dodge']
-                            ."&values[4]=".$overall['parry']
-                            ."&values[5]=".$overall['deflect']
-                            ."&values[6]=".$overall['resist']
-                            ."&values[7]=".$overall['immune']
-                        ."' alt='Hit/Crit/Miss/Dodge..'>
+                        <td>
+                            <table>
+                                <tr><td>Treffer (hit+crit): </td><td>".($overall['hit']+$overall['crit'])."</td>      <td>".round(100/$overall['count']*($overall['hit']+$overall['crit']),     2)."%</td></tr>
+                                <tr><td>Treffer (noncrit):</td><td>".$overall['hit']."</td>    <td>".round(100/$overall['count']*$overall['hit'],     2)."%</td></tr>
+                                <tr><td>Kritisch:       </td><td>".$overall['crit']."</td>     <td>".round(100/$overall['count']*$overall['crit'],    2)."%</td></tr>
+                                <tr><td>Verfehlt:       </td><td>".$overall['miss']."</td>     <td>".round(100/$overall['count']*$overall['miss'],    2)."%</td></tr>
+                                <tr><td>Ausgewichen:    </td><td>".$overall['dodge']."</td>    <td>".round(100/$overall['count']*$overall['dodge'],   2)."%</td></tr>
+                                <tr><td>Parriert:       </td><td>".$overall['parry']."</td>    <td>".round(100/$overall['count']*$overall['parry'],   2)."%</td></tr>
+                                <tr><td>Schild:         </td><td>".$overall['deflect']."</td>  <td>".round(100/$overall['count']*$overall['deflect'], 2)."%</td></tr>
+                                <tr><td>Widerstanden:   </td><td>".$overall['resist']."</td>   <td>".round(100/$overall['count']*$overall['resist'], 2)."%</td></tr>
+                                <tr><td>Immun:          </td><td>".$overall['immune']."</td>   <td>".round(100/$overall['count']*$overall['immune'], 2)."%</td></tr>
+                            </table>
+                        </td>
+                        <td>
+                            <iframe width='450' height='300' frameborder='0' scrolling='no' src='piechart_google.php?";
+                $html .=  "Treffer=".$overall['hit'];
+                $html .= "&Kritisch=".$overall['crit'];
+                $html .= "&Verfehlt=".$overall['miss'];
+                $html .= "&Ausgewichen=".$overall['dodge'];
+                $html .= "&Parriert=".$overall['parry'];
+                $html .= "&Schild=".$overall['deflect'];
+                $html .= "&Widerstanden=".$overall['Resist'];
+                $html .= "&Immun=".$overall['Immune'];
+                $html .= "&pietitle=Trefferstatistik&pieheight=300&piewidth=450'></iframe>
+                        </td>
+                        <td>
+                            <iframe width='450' height='300' frameborder='0' scrolling='no' src='piechart_google.php?";
+                foreach($used_abilities as $ability_name => $ability) {
+                    $piedata[] = $ability_name."=".$ability['damage'];
+                }
+                $html .= join('&', $piedata);
+                $html .= "&pietitle=Damage pro Fähigkeit&pieheight=300&piewidth=450'></iframe>
                         </td>
                     </tr>
-                    <tr><td>Treffer (hit+crit): </td><td>".($overall['hit']+$overall['crit'])."</td>      <td>".round(100/$overall['count']*($overall['hit']+$overall['crit']),     2)."%</td></tr>
-                    <tr><td>Treffer (noncrit):</td><td>".$overall['hit']."</td>    <td>".round(100/$overall['count']*$overall['hit'],     2)."%</td></tr>
-                    <tr><td>Kritisch:       </td><td>".$overall['crit']."</td>     <td>".round(100/$overall['count']*$overall['crit'],    2)."%</td></tr>
-                    <tr><td>Verfehlt:       </td><td>".$overall['miss']."</td>     <td>".round(100/$overall['count']*$overall['miss'],    2)."%</td></tr>
-                    <tr><td>Ausgewichen:    </td><td>".$overall['dodge']."</td>    <td>".round(100/$overall['count']*$overall['dodge'],   2)."%</td></tr>
-                    <tr><td>Parriert:       </td><td>".$overall['parry']."</td>    <td>".round(100/$overall['count']*$overall['parry'],   2)."%</td></tr>
-                    <tr><td>Schild:         </td><td>".$overall['deflect']."</td>  <td>".round(100/$overall['count']*$overall['deflect'], 2)."%</td></tr>
-                    <tr><td>Widerstanden:   </td><td>".$overall['immune']."</td>   <td>".round(100/$overall['count']*$overall['immune'], 2)."%</td></tr>
-                    <tr><td>Immun:          </td><td>".$overall['immune']."</td>   <td>".round(100/$overall['count']*$overall['immune'], 2)."%</td></tr>
                 </table>
                 </div>";
             }
@@ -130,7 +135,7 @@
             parent::Tab(
                 $name, 
                 'Damage pro Fähigkeit', 
-                array('Fähigkeit', 'Use', 'Damage', 'DPS', 'Damage/Use', 'Threat', 'TPS', 'Threat/Use',
+                array('Fähigkeit', 'Use', 'Damage', 'DPS', 'Damage/Use', 'Threat', 'TPS', 'Threat/Use', 'Threat/DMG',
                         'Hit (alle)', 'Hit (noncrit)', 'Crit', 'Miss', 'Dodge', 'Parry', 'Deflect', 'Resist', 'Immun',
                         'Hit (alle) %', 'Hit (noncrit) %', 'Crit %', 'Miss %', 'Dodge %', 'Parry %', 'Deflect %', 'Resist %', 'Immun %'), 
                 $data,

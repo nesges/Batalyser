@@ -358,7 +358,7 @@
                         foreach($row as $key => $value) {
                             $column_sql .= $key.', ';
                             if($key == 'timestamp') {
-                                $values_sql .= "from_unixtime(".$value."), ";
+                                $values_sql .= "from_unixtime(".mysql_escape_string($value)."), ";
                             } else {
                                 $values_sql .= "'".mysql_escape_string($value)."', ";
                             }

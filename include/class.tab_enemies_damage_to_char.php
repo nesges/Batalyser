@@ -1,7 +1,7 @@
 <?
     class Tab_Enemies_Damage_to_Char extends Tab {
         
-        function Tab_Enemies_Damage_to_Char($name, $char, $start_id, $end_id, $class='') {
+        function Tab_Enemies_Damage_to_Char($name, $char, $start_id, $end_id, $class='', $hidexps=0) {
             global $parser;
             
             $enemies = array();
@@ -70,23 +70,37 @@
             }
             
             if(count($enemies) > 0) {
-                $html = "<div class='accordion'>";
+                $html = "<p>Dieser Tab zeigt die Werte deiner Gegner gegen dich. Wieviel Schaden hat ein Gegner an dir gemacht? Wie oft hat er verfehlt?";
+                if($start_id == $parser->start_id && $end_id == $parser->end_id) {
+                    $html .= "<br>In der Gesamtansicht werden DPS-Werte ausgeblendet, da sie auf die Gesamtdauer des Logs nicht sinnvoll darzustellen sind.";
+                }
+                $html .= "</p>
+                    <div class='accordion'>";
+                $_html = '';
                 $duration = $end_timestamp - $start_timestamp;
                 foreach($enemies as $enemy_name => $enemy) {
-                    $html .= "<h4><a href='#'>".$enemy_name." (".$enemy['damage']." Damage, ".round($enemy['damage'] / $duration, 2)." DPS)</a></h4>
+                    $_html .= "<h4><a href='#'>".$enemy_name." (".$enemy['damage']." Damage";
+                    if(! $hidexps) {
+                        $_html .= ", ".round($enemy['damage'] / $duration, 2)." DPS";
+                    }
+                    $_html .= ")</a></h4>
                             <div>
+                                
                                 <table class='".($class?$class:'dataTable')."'>
                                     <thead>
                                         <tr>
                                             <th>Fähigkeit</th>
                                             <th>Use</th>
                                             <th>Damage</th>
-                                            <th>Dmg/Use</th>
-                                            <th>DPS</th>
-                                            <th>Threat</th>
-                                            <th>Threat/Use</th>
-                                            <th>TPS</th>
-                                            <th>Hit (alle)</th>
+                                            <th>Dmg/Use</th>";
+                                            if(! $hidexps) {
+                                                $_html .= "<th>DPS</th>";
+                                            }
+                                            // enemies generate Thread to chars, but I just don't see any sense in it
+                                            //<th>Threat</th>
+                                            //<th>Threat/Use</th>
+                                            //<th>TPS</th>
+                                            $_html .= "<th>Hit (alle)</th>
                                             <th>Hit (-crit)</th>
                                             <th>Crit</th>
                                             <th>Miss</th>
@@ -108,16 +122,19 @@
                                     </thead>
                                     <tbody>";
                     foreach($enemies_abilities[$enemy_name] as $ability_name => $ability) {
-                        $html .= "<tr>
+                        $_html .= "<tr>
                                             <td>".$ability_name."</td>
                                             <td>".$ability['count']."</td>
                                             <td>".$ability['damage']."</td>
-                                            <td>".round($ability['damage']/$ability['count'], 2)."</td>
-                                            <td>".round($ability['damage']/$duration, 2)."</td>
-                                            <td>".$ability['threat']."</td>
-                                            <td>".round($ability['threat']/$ability['count'], 2)."</td>
-                                            <td>".round($ability['threat']/$duration, 2)."</td>
-                                            <td>".($ability['hit']+$ability['crit'])."</td>
+                                            <td>".round($ability['damage']/$ability['count'], 2)."</td>";
+                                            if(! $hidexps) {
+                                                $_html .= "<td>".round($ability['damage']/$duration, 2)."</td>";
+                                            }
+                                            // enemies generate Thread to chars, but I just don't see any sense in it
+                                            // <td>".$ability['threat']."</td>
+                                            // <td>".round($ability['threat']/$ability['count'], 2)."</td>
+                                            // <td>".round($ability['threat']/$duration, 2)."</td>
+                                            $_html .= "<td>".($ability['hit']+$ability['crit'])."</td>
                                             <td>".$ability['hit']."</td>
                                             <td>".$ability['crit']."</td>
                                             <td>".$ability['miss']."</td>
@@ -137,18 +154,21 @@
                                             <td>".round($ability['immune']/$ability['count'], 2)."</td>
                                         </tr>";
                     }
-                    $html .= "</tbody>
+                    $_html .= "</tbody>
                                     <tfoot>
                                         <tr>
                                             <td>Summe</td>
                                             <td>".$enemy['attack_count']."</td>
                                             <td>".$enemy['damage']."</td>
-                                            <td>".round($enemy['damage']/$enemy['attack_count'], 2)."</td>
-                                            <td>".round($enemy['damage']/$duration, 2)."</td>
-                                            <td>".$enemy['threat']."</td>
-                                            <td>".round($enemy['threat']/$enemy['attack_count'], 2)."</td>
-                                            <td>".round($enemy['threat']/$duration, 2)."</td>
-                                            <td>".($enemy['hit']+$enemy['crit'])."</td>
+                                            <td>".round($enemy['damage']/$enemy['attack_count'], 2)."</td>";
+                                            if(! $hidexps) {
+                                                $_html .= "<td>".round($ability['damage']/$duration, 2)."</td>";
+                                            }
+                                            // enemies generate Thread to chars, but I just don't see any sense in it
+                                            // <td>".$enemy['threat']."</td>
+                                            // <td>".round($enemy['threat']/$enemy['attack_count'], 2)."</td>
+                                            // <td>".round($enemy['threat']/$duration, 2)."</td>
+                                            $_html .= "<td>".($enemy['hit']+$enemy['crit'])."</td>
                                             <td>".$enemy['hit']."</td>
                                             <td>".$enemy['crit']."</td>
                                             <td>".$enemy['miss']."</td>
@@ -172,43 +192,43 @@
                                 
                             </div>";
                 }
-                $html .= "<h4><a href='#gesamt_all_vs_".$char."'>Gesamt (".$overall['damage']." Damage, ".round($overall['damage'] / $duration, 2)." DPS)</a></h4>
+                $html .= "<h4><a href='#gesamt_all_vs_".$char."'>Gesamt (".$overall['damage']." Damage";
+                    if(! $hidexps) {
+                        $html .= ", ".round($overall['damage'] / $duration, 2)." DPS";
+                    }
+                    $html .= ")</a></h4>
                                 <div>
                                     <table>
                                         <tr>
-                                            <td rowspan='10' colspan='2'>
-                                            <img src='?op=piechart"
-                                                ."&labels[0]=Hit"
-                                                ."&labels[1]=Crit"
-                                                ."&labels[2]=Miss"
-                                                ."&labels[3]=Dodge"
-                                                ."&labels[4]=Parry"
-                                                ."&labels[5]=Deflect"
-                                                ."&labels[6]=Resist"
-                                                ."&labels[7]=Immune"
-                                                ."&values[0]=".$overall['hit']
-                                                ."&values[1]=".$overall['crit']
-                                                ."&values[2]=".$overall['miss']
-                                                ."&values[3]=".$overall['dodge']
-                                                ."&values[4]=".$overall['parry']
-                                                ."&values[5]=".$overall['deflect']
-                                                ."&values[6]=".$overall['resist']
-                                                ."&values[7]=".$overall['immune']
-                                            ."' alt='Hit/Crit/Miss/Dodge..'>
+                                            <td>
+                                                <table>
+                                                    <tr><td>Treffer (hit+crit): </td><td>".($overall['hit']+$overall['crit'])."</td>      <td>".round(100/$overall['count']*($overall['hit']+$overall['crit']),     2)."%</td></tr>
+                                                    <tr><td>Treffer (noncrit):</td><td>".$overall['hit']."</td>    <td>".round(100/$overall['count']*$overall['hit'],     2)."%</td></tr>
+                                                    <tr><td>Kritisch:       </td><td>".$overall['crit']."</td>     <td>".round(100/$overall['count']*$overall['crit'],    2)."%</td></tr>
+                                                    <tr><td>Verfehlt:       </td><td>".$overall['miss']."</td>     <td>".round(100/$overall['count']*$overall['miss'],    2)."%</td></tr>
+                                                    <tr><td>Ausgewichen:    </td><td>".$overall['dodge']."</td>    <td>".round(100/$overall['count']*$overall['dodge'],   2)."%</td></tr>
+                                                    <tr><td>Parriert:       </td><td>".$overall['parry']."</td>    <td>".round(100/$overall['count']*$overall['parry'],   2)."%</td></tr>
+                                                    <tr><td>Schild:         </td><td>".$overall['deflect']."</td>  <td>".round(100/$overall['count']*$overall['deflect'], 2)."%</td></tr>
+                                                    <tr><td>Resist:         </td><td>".$overall['resist']."</td>   <td>".round(100/$overall['count']*$overall['resist'], 2)."%</td></tr>
+                                                    <tr><td>Immun:          </td><td>".$overall['immune']."</td>   <td>".round(100/$overall['count']*$overall['immune'], 2)."%</td></tr>
+                                                </table>
+                                            </td>
+                                            <td>
+                                                <iframe width='450' height='300' frameborder='0' scrolling='no' src='piechart_google.php?";
+                    $html .=  "Treffer=".$overall['hit'];
+                    $html .= "&Kritisch=".$overall['crit'];
+                    $html .= "&Verfehlt=".$overall['miss'];
+                    $html .= "&Ausgewichen=".$overall['dodge'];
+                    $html .= "&Parriert=".$overall['parry'];
+                    $html .= "&Schild=".$overall['deflect'];
+                    $html .= "&Widerstanden=".$overall['Resist'];
+                    $html .= "&Immun=".$overall['Immune'];
+                    $html .= "&pietitle=Gegentrefferstatistik&pieheight=300&piewidth=450'></iframe>
                                             </td>
                                         </tr>
-                                        <tr><td>Treffer (hit+crit): </td><td>".($overall['hit']+$overall['crit'])."</td>      <td>".round(100/$overall['count']*($overall['hit']+$overall['crit']),     2)."%</td></tr>
-                                        <tr><td>Treffer (noncrit):</td><td>".$overall['hit']."</td>    <td>".round(100/$overall['count']*$overall['hit'],     2)."%</td></tr>
-                                        <tr><td>Kritisch:       </td><td>".$overall['crit']."</td>     <td>".round(100/$overall['count']*$overall['crit'],    2)."%</td></tr>
-                                        <tr><td>Verfehlt:       </td><td>".$overall['miss']."</td>     <td>".round(100/$overall['count']*$overall['miss'],    2)."%</td></tr>
-                                        <tr><td>Ausgewichen:    </td><td>".$overall['dodge']."</td>    <td>".round(100/$overall['count']*$overall['dodge'],   2)."%</td></tr>
-                                        <tr><td>Parriert:       </td><td>".$overall['parry']."</td>    <td>".round(100/$overall['count']*$overall['parry'],   2)."%</td></tr>
-                                        <tr><td>Schild:         </td><td>".$overall['deflect']."</td>  <td>".round(100/$overall['count']*$overall['deflect'], 2)."%</td></tr>
-                                        <tr><td>Resist:         </td><td>".$overall['resist']."</td>   <td>".round(100/$overall['count']*$overall['resist'], 2)."%</td></tr>
-                                        <tr><td>Immun:          </td><td>".$overall['immune']."</td>   <td>".round(100/$overall['count']*$overall['immune'], 2)."%</td></tr>
                                     </table>
-                                </div>
-                            </div>";
+                                </div>";
+                $html .= $_html."</div>";
             }
             
             parent::Tab(

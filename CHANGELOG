@@ -1,4 +1,20 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+v0.6
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* removed threat values from Tab_Enemies_Damage_to_Char
+* DPS values now hidden in summary on Tab_Enemies_Damage_to_Char
+* added Threat/Heal on Tab_DpsHpsTps_per_Target
+* added Threat/DMG on Tab_Char_DpsTps_per_Ability
+* publicizing logs is now available
+* fixed some possible sql insertion attacks
+* moved some basic initialisation from report.php, accordion_ajax.phph to include/init.php
+* removed function piechart 
+* replaced gd-piecharts with piechart_google.php
+* added damage/ability piechart on Tab_Char_DpsTps_per_Ability
+* added heal/ability piechart on Tab_Char_HpsTps_per_Ability 
+* moved summary to top on Tab_Enemies_Damage_to_Char
+* added view, publicize and download icons to dialog_options
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 v0.5
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 * fixed a bug where everyone could view everyones logs
