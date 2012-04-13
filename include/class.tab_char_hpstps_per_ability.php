@@ -51,7 +51,6 @@
                             $overall['hit'] += $logdata['hit'];
                             $overall['crit'] += $logdata['crit'];
                             $overall['count']++;
-                            $overall['overheal'] += $used_abilities[$ability_name]['overheal'];
                     }
                 }
             }
@@ -59,25 +58,26 @@
             $duration = $end_timestamp - $start_timestamp;
             if($overall['count']>0) {
                 foreach($used_abilities as $ability_name => $ability) {
-                    
-                    
-                    $data .= "<tr>
-                            <td>".$ability_name."</td>
-                            <td>".$ability['count']."</td>
-                            <td>".$ability['heal']."</td>
-                            <td>".round($ability['heal'] / $duration, 2)."</td>
-                            <td>".round($ability['heal'] / $ability['count'], 2)."</td>
-                            <td>".round($ability['overheal'], 2)."</td>
-                            <td>".round(100/$ability['heal']*$ability['overheal'], 2)."%</td>
-                            <td>".$ability['threat']."</td>
-                            <td>".round($ability['threat'] / $duration, 2)."</td>
-                            <td>".round($ability['threat'] / $ability['count'], 2)."</td>
-                            <td>".round($ability['threat'] / $ability['heal'], 2)."</td>
-                            <td>".$ability['hit']."</td>
-                            <td>".$ability['crit']."</td>
-                            <td>".round(100/$ability['count']*$ability['hit'], 2)."%</td>
-                            <td>".round(100/$ability['count']*$ability['crit'], 2)."%</td>
-                        </tr>";
+                    $overall['overheal'] += $used_abilities[$ability_name]['overheal'];
+                    if($ability['heal']>0) {
+                        $data .= "<tr>
+                                <td>".$ability_name."</td>
+                                <td>".$ability['count']."</td>
+                                <td>".$ability['heal']."</td>
+                                <td>".round($ability['heal'] / $duration, 2)."</td>
+                                <td>".round($ability['heal'] / $ability['count'], 2)."</td>
+                                <td>".round($ability['overheal'], 2)."</td>
+                                <td>".round((100/$ability['heal'])*$ability['overheal'], 2)."%</td>
+                                <td>".$ability['threat']."</td>
+                                <td>".round($ability['threat'] / $duration, 2)."</td>
+                                <td>".round($ability['threat'] / $ability['count'], 2)."</td>
+                                <td>".round($ability['threat'] / $ability['heal'], 2)."</td>
+                                <td>".$ability['hit']."</td>
+                                <td>".$ability['crit']."</td>
+                                <td>".round(100/$ability['count']*$ability['hit'], 2)."%</td>
+                                <td>".round(100/$ability['count']*$ability['crit'], 2)."%</td>
+                            </tr>";
+                    }
                 }
             
                 $html = "<div style='border-top: 1px solid silver'>Gesamt:<table>
