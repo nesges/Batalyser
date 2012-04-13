@@ -33,12 +33,15 @@
         'forum'                     => 'Forum',                                 // button on the page header
         'logfile'                   => 'Logfile',                               // info on the page header, options dialog
         'loggedinas'                => 'Logged in as',                          // info on the page header
+        'publicurl'                 => 'Public URL'
+        'minfightduration_short'    => 'Min. Fight-Duration (s)',               // info on page header
+        'preferedlanguage_short'    => 'Pref. Language',                        // info on page header
 
         // options dialog
         'view'                      => 'Configure View',                        // options dialog
         'view_chooselogfile'        => 'View Logfile',                          // options dialog
-        'minfightduration'          => 'Minimum Fight-Duration (seconds)',      // options dialog, info on page header
-        'preferedlanguage'          => 'Prefered Language',                     // options dialog, info on page header
+        'minfightduration'          => 'Minimum Fight-Duration (seconds)',      // options dialog
+        'preferedlanguage'          => 'Prefered Language',                     // options dialog
         'viewlogwiththissettings'   => 'View Log using these Settings',         // options dialog
         'upload'                    => 'Upload',                                // options dialog, datatable column header
         'zipfilenotice'             => 'Zip-compress your logfile before upload, to speed up processing time and upload more data.',
@@ -109,6 +112,7 @@
         'hitstatistic'              => 'Hitstatistics',
         'healhitstatistic'          => 'Healcritstatistics',
         'counterhitstatistic'       => 'Received-Hitstatistics',
+        'overhealstatistic'         => 'Overhealstatistics (experimental)',
         'damageperability'          => 'Damage per Ability',
         'healperability'            => 'Heal per Ability',
         'xpspertarget'              => 'DPS/HPS/TPS per Target',
@@ -129,6 +133,8 @@
         'time'                      => 'Time',
         'source'                    => 'Source',
         'effect'                    => 'Effect',
-        'damagetype'                => 'Damagetype'
+        'damagetype'                => 'Damagetype',
+        'enlarge_grafic'            => 'Enlarge Grafic',
+        'effective'                 => 'effective'
     );
 ?>

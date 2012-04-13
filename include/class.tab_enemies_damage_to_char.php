@@ -213,17 +213,17 @@
                                                     <tr><td>".guil('immune').":     </td><td>".$overall['immune']."</td>   <td>".round(100/$overall['count']*$overall['immune'], 2)."%</td></tr>
                                                 </table>
                                             </td>
-                                            <td>
-                                                <iframe width='450' height='300' frameborder='0' scrolling='no' src='piechart_google.php?";
-                    $html .=     guil('hitnoncrit')."=".$overall['hit'];
-                    $html .= "&".guil('crit')."=".$overall['crit'];
-                    $html .= "&".guil('miss')."=".$overall['miss'];
-                    $html .= "&".guil('dodge')."=".$overall['dodge'];
-                    $html .= "&".guil('parry')."=".$overall['parry'];
-                    $html .= "&".guil('deflect')."=".$overall['deflect'];
-                    $html .= "&".guil('resist')."=".$overall['Resist'];
-                    $html .= "&".guil('immune')."=".$overall['Immune'];
-                    $html .= "&pietitle=".guil('counterhitstatistic')."&pieheight=300&piewidth=450'></iframe>
+                                            <td>";
+                    $params  =     guil('hitnoncrit')."=".$overall['hit'];
+                    $params .= "&".guil('crit')."=".$overall['crit'];
+                    $params .= "&".guil('miss')."=".$overall['miss'];
+                    $params .= "&".guil('dodge')."=".$overall['dodge'];
+                    $params .= "&".guil('parry')."=".$overall['parry'];
+                    $params .= "&".guil('deflect')."=".$overall['deflect'];
+                    $params .= "&".guil('resist')."=".$overall['Resist'];
+                    $params .= "&".guil('immune')."=".$overall['Immune'];
+                    $html .= "<iframe width='450' height='300' frameborder='0' scrolling='no' src='piechart_google.php?".$params."&pietitle=".guil('counterhitstatistic')."&pieheight=300&piewidth=450'></iframe>
+                                                <center><button class='button_open_dialog_misc' href='piechart_google.php?".$params."&pietitle=".guil('counterhitstatistic')."&pieheight=600&piewidth=800'>".guil('enlarge_grafic')."</button></center>
                                             </td>
                                         </tr>
                                     </table>

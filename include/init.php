@@ -40,9 +40,7 @@
         } elseif($guil['de'][$term]) {
             return $guil['de'][$term];
         } else {
-            // notification to start with, likely to be removed later on
-            // mail('nesges@gmail.com', 'Batalyser: Missing translation for "'.$term.'"', '');
-            return "TRANSLATION_MISSING ($term) [".$SESSION['language']."]";
+            return "TRANSLATION_MISSING ($term)]";
         }
     }
 ?>

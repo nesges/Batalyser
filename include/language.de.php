@@ -33,12 +33,15 @@
         'forum'                     => 'Forum',                                 // button on the page header
         'logfile'                   => 'Logfile',                               // info on the page header, options dialog
         'loggedinas'                => 'Eingeloggt als',                        // info on the page header
+        'publicurl'                 => 'Öffentlicher URL',                      // info on the page header
+        'minfightduration_short'    => 'Min. Kampfdauer (s)',                   // info on page header
+        'preferedlanguage_short'    => 'Bev. Sprache',                          // info on page header
 
         // options dialog
         'view'                      => 'Ansicht',                               // options dialog
         'view_chooselogfile'        => 'Logfile anzeigen',                      // options dialog
-        'minfightduration'          => 'Mindest-Kampfdauer (in Sekunden)',      // options dialog, info on page header
-        'preferedlanguage'          => 'Bevorzugte Sprache',                    // options dialog, info on page header
+        'minfightduration'          => 'Mindest-Kampfdauer (in Sekunden)',      // options dialog
+        'preferedlanguage'          => 'Bevorzugte Sprache',                    // options dialog
         'viewlogwiththissettings'   => 'Log mit diesen Einstellungen ansehen',  // options dialog
         'upload'                    => 'Upload',                                // options dialog, datatable column header
         'zipfilenotice'             => 'Wenn du dein Logfile vor dem Upload zip-komprimierst, wird die Verarbeitung wesentlich schneller sein und du kannst mehr Daten hochladen.',      // options dialog
@@ -109,6 +112,7 @@
         'hitstatistic'              => 'Trefferstatistik',
         'healhitstatistic'          => 'Heiltrefferstatistik',
         'counterhitstatistic'       => 'Gegentrefferstatistik',
+        'overhealstatistic'         => 'Overhealstatistik (experimentell)',
         'damageperability'          => 'Schaden pro Fähigkeit',
         'healperability'            => 'Heilung pro Fähigkeit',
         'xpspertarget'              => 'DPS/HPS/TPS pro Ziel',
@@ -129,6 +133,8 @@
         'time'                      => 'Zeit',
         'source'                    => 'Quelle',
         'effect'                    => 'Effekt',
-        'damagetype'                => 'Schadensart'
+        'damagetype'                => 'Schadensart',
+        'enlarge_grafic'            => 'Grafik vergrößern',
+        'effective'                 => 'effektiv'
     );
 ?>

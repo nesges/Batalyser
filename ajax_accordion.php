@@ -1,6 +1,6 @@
 <?
     session_start();
-    if(!$_SESSION['user_id']) {
+    if(!$_SESSION['user_id'] && !$_SESSION['log_id']) {
         die("101");
     }
     

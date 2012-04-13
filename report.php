@@ -19,8 +19,6 @@
         // error_reporting(E_ALL);
     }
 
-    // include("include/class.benchmark.php");
-
     include_once("include/init.php");
     include("include/class.tab.php");
     include("include/class.tab_dpshpstps_per_target.php");
@@ -83,27 +81,11 @@
                 $_SESSION['language'] = $_GET['prefered_language'];
                 setcookie('language', $_GET['prefered_language'], time()+60*60*24*30);
             }
-            //if(isset($_GET['min_logrange'])) {
-            //    $_SESSION['min_logrange'] = $_GET['min_logrange'];
-            //}
-            //if(isset($_GET['max_logrange'])) {
-            //    $_SESSION['max_logrange'] = $_GET['max_logrange'];
-            //}
-
             if(! isset($_SESSION['min_fight_duration'])) {
-                $_SESSION['min_fight_duration'] = 30;
+                $_SESSION['min_fight_duration'] = 21;
             }
             if(! isset($_SESSION['language'])) {
                 $_SESSION['language'] = 'de';
-            }
-
-            // check if cache for this query is available
-            if(isset($_SESSION['user_id']) && isset($_SESSION['log_id']) && isset($_SESSION['min_fight_duration']) && isset($_SESSION['language'])) {
-                if(! isset($_SESSION['min_logrange']) || ! isset($_SESSION['max_logrange'])) {
-                    $logrange = 'full';
-                } else {
-                    $logrange = $_SESSION['min_logrange'].'-'.$_SESSION['max_logrange'];
-                }
             }
             break;
         case "noop":
@@ -119,6 +101,11 @@
             $_SESSION['user_name'] = "Demo";
             $_SESSION['user_email'] = "";
             break;
+        case "setlanguage":
+            $_SESSION['language'] = $_GET['language'];
+            setcookie('language', $_GET['language'], time()+60*60*24*30);
+            header("Location: ".$_SERVER['PHP_SELF']);
+            exit();
         case "login":
             $_SESSION['language'] = $_POST['language'];
             setcookie('language', $_POST['language'], time()+60*60*24*30);
@@ -194,7 +181,7 @@
                     $filename = 'upload/'.$_SESSION['user_id'].'/'.basename($_FILES['logfile']['name']);
                     if(move_uploaded_file($_FILES['logfile']['tmp_name'], $filename)) {
                         sql_query("insert into logfile (uploader_id, filename, timestamp, public, mergeable)
-                            values (".$_SESSION[user_id].", '".$filename."', now(), ".($_GET['publicize']?1:0).", ".($_GET['mergeable']?1:0).")");
+                            values (".$_SESSION[user_id].", '".$filename."', now(), ".($_POST['publicize']?1:0).", ".($_POST['mergeable']?1:0).")");
                         $res = sql_query("select max(id) from logfile where uploader_id = ".$_SESSION[user_id]);
                         list($logfile_id) = sql_fetch_row($res);
                         $_SESSION['log_id'] = $logfile_id;
@@ -311,12 +298,12 @@
             break;
     }
 
-    if($_SESSION['user_id']) {
-        // select users logfiles
+    if($_SESSION['user_id'] || $_SESSION['log_id']) {
+        // select users logfiles 
         $res = sql_query("select id, UNIX_TIMESTAMP(timestamp), notes, filename, uploader_id, public
             from logfile
             where (
-                uploader_id = ".$_SESSION['user_id']."
+                uploader_id = '".$_SESSION['user_id']."'
                 or id = '".$_SESSION['log_id']."'
             )
             order by timestamp desc");
@@ -388,7 +375,20 @@
         include("footer.php");
     }
 
-    if(! $_SESSION['user_id']) {
+    // only allow own and public flagged logs to be viewed
+    if(isset($_SESSION['log_id']) && !$admin) {
+        $res = sql_query("select id, public from logfile where id=".$_SESSION['log_id']."
+            and ( uploader_id='".$_SESSION['user_id']."'
+                or public=1)");
+        $found = sql_num_rows($res);
+        list($viewing_allowed, $is_public) = sql_fetch_row($res);
+        if(!$viewing_allowed) {
+            header("Location: ?op=setopt&logfile=&message=".guil('notthelogyourelookingfor'));
+            exit();
+        }
+    }
+    
+    if(! $_SESSION['user_id'] && !$is_public) {
         print "<div id='dialog_login'>
                 <p>".guil('dialog_login_useforumacc')."</p>
                 <form action='' method='POST'>
@@ -396,7 +396,7 @@
                         <tr><td>".guil('username').":</td>        <td><input type='text' name='username'></td></tr>
                         <tr><td>".guil('password').":</td>        <td><input type='password' name='password'></td></tr>
                         <tr><td>".guil('preferedlanguage').":</td><td>
-                            <select name='language'>";
+                            <select name='language' onChange='document.location.href=\"?op=setlanguage&language=\"+this.value'>";
         foreach(array('de' => 'Deutsch', 'en' => 'English') as $short => $long) {
             if($_SESSION['language'] == $short) {
                 $selected = "selected='selected'";
@@ -420,36 +420,36 @@
             include("footer.php");
     }
 
-    // only allow own and public flagged logs to be viewed
-    if(isset($_SESSION['log_id']) && !$admin) {
-        $res = sql_query("select id from logfile where id=".$_SESSION['log_id']."
-            and ( uploader_id=".$_SESSION['user_id']."
-                or public=1)");
-        $found = sql_num_rows($res);
-        list($viewing_allowed) = sql_fetch_row($res);
-        if(!$viewing_allowed) {
-            header("Location: ?op=setopt&logfile=&message=".guil('notthelogyourelookingfor'));
-            exit();
-        }
-    }
-
     // at this point we have a logged in user and maybe(!) a chosen logfile
     // let's go
 
     print "<div id='navbar' style='float:left'>
             <button onClick='document.location.href=\"/forum\"'>".guil('forum')."</button>
-        </div>
-        <div style='float:left; margin-left:25px'>
-            <b>".guil('logfile').":</b>             ".$logfiles[$_SESSION['log_id']]['notes']." |
-            <b>".guil('minfightduration').":</b>    ".$_SESSION['min_fight_duration']." |
-            <b>".guil('preferedlanguage').":</b>    ".$languages[$_SESSION['language']]."
-        </div>
-        <div style='text-align:right'>
-            ".guil('loggedinas').": ".$_SESSION['user_name']."
-            <button onClick='document.location.href=\"?op=session_reset\"'>".guil('logoff')."</button>
-            <button id='button_open_dialog_options'>".guil('options')."</button>
+        </div>";
+    if($_SESSION['log_id']) {
+        print "<div style='float:left; margin-left:25px'>
+            <b>".guil('logfile').":</b>                 ".$logfiles[$_SESSION['log_id']]['notes']." |
+            <b>".guil('minfightduration_short').":</b>  ".$_SESSION['min_fight_duration']." |
+            <b>".guil('preferedlanguage_short').":</b>  ".$languages[$_SESSION['language']];
+        if($logfiles[$_SESSION['log_id']]['public']) {
+            print " | <a style='color:red' href='?op=setopt&logfile=".$_SESSION['log_id']."'>".guil('publicurl')."</a>";
+        }
+        print "</div>";
+    }
+    print "<div style='text-align:right'>";
+    if($_SESSION['user_id']) {
+        print guil('loggedinas').": ".$_SESSION['user_name']."
+            <button onClick='document.location.href=\"?op=session_reset\"'>".guil('logoff')."</button>";
+    } else {
+        print "
+            <button onClick='document.location.href=\"?op=session_reset\"'>".guil('login')."</button>
+            <button onClick='document.location.href=\"/forum/ucp.php?mode=register\"'>".guil('register')."</button>";
+    }
+    print "<button id='button_open_dialog_options'>".guil('options')."</button>
             <button id='button_open_dialog_help'>?</button>
         </div>
+        
+        <div id='dialog_misc' style='padding:0'><iframe style='margin:0' src='' frameborder='0' width='800' height='600' scrolling='no'></iframe></div>
 
         <div id='dialog_options'>
             <div id='accordion_options'>
@@ -495,9 +495,10 @@
                         </table>
                         <input type='hidden' name='op' value='setopt'>
                     </form>
-                </div>
+                </div>";
 
-                <h3><a href='#'>".guil('upload')."</a></h3>
+    if($_SESSION['user_id']) {
+        print "<h3><a href='#'>".guil('upload')."</a></h3>
                 <div>
                     <form action='' method='POST' enctype='multipart/form-data' name='uploadform'>
                         <input type='hidden' name='MAX_FILE_SIZE' value='".MAX_FILE_SIZE."'>
@@ -528,8 +529,9 @@
                         <input type='hidden' name='op' value='logupload'>
                     </form>
                 </div>";
+        }
 
-            if($logfiles) {
+            if($logfiles && $_SESSION['user_id']) {
                 print "<h3><a href='#'>".guil('availablelogs')."</a></h3>
                 <div>
                     <p>".guil('yourlogs').":</p>

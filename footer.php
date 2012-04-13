@@ -39,6 +39,12 @@
                     "sDom": "R<\'H\'W>t",
                     "aaSorting": [[ 0, "asc" ]]
                 });
+                $( ".button_open_dialog_misc" ).button();
+                $( ".button_open_dialog_misc" ).click(function() {
+                    $( "#dialog_misc" ).dialog( "open" );
+                    $("#dialog_misc iframe").attr("src", $(this).attr("href"));
+                    return false;
+                });
             });
             
             $(document).ready(function() {
@@ -58,7 +64,7 @@
                 }); 
                 $("h3", "#accordion_ajax").click(function(e) {
                     var contentDiv = $(this).next("div");
-                    contentDiv.load($(this).find("a").attr("href"));      
+                    contentDiv.load($(this).find("a").attr("href"));
                 });
                 $( ".dataTable").dataTable( {
                     "bJQueryUI": true,
@@ -164,6 +170,15 @@
                         }
                     ?>
                     title: '<?=guil('dialog_options_title')?>',
+                    width: 800,
+                    position: 'top'
+                });
+                $( ".button_open_dialog_misc" ).click(function() {
+                    $( "#dialog_misc" ).dialog( "open" );
+                    return false;
+                });
+                $( "#dialog_misc" ).dialog({
+                    autoOpen: false,
                     width: 800,
                     position: 'top'
                 });

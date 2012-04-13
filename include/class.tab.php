@@ -3,6 +3,7 @@
         var $name;
         var $title;
         var $columns;
+        var $tooltips;
         var $data;
         var $html;
         var $class;
@@ -21,6 +22,15 @@
             }
             if(isset($class) && !empty($class)) {
                 $this->class = $class;
+            }
+            $this->tooltips = array();
+        }
+        
+        function tooltip($column_name, $tooltip='') {
+            if($tooltip) {
+                $this->tooltips[$column_name] = $tooltip;
+            } else {
+                return $this->tooltips[$column_name];
             }
         }
         
@@ -51,8 +61,8 @@
                     $output .= "<table class='".($this->class?$this->class:'dataTable')." ".$this->name."'>
                             <thead>
                                 <tr>";
-                    foreach($this->columns as $colum_title) {
-                        $output .= "\n<th>$colum_title</th>";
+                    foreach($this->columns as $column_title) {
+                        $output .= "\n<th title='".$this->tooltips[$column_title]."'>$column_title</th>";
                     }
                     $output .= "</tr>
                             </thead>

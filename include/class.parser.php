@@ -37,7 +37,11 @@
                 
                 unset($unserialized);
             } else {
-                $this->logfile = 'upload/'.$_SESSION['user_id'].'/'.basename($logfile); // make sure only files in the upload directory are processed
+                if(preg_match('#upload/\d+/[^/]+#', $logfile)) {
+                    $this->logfile = $logfile;
+                } else {
+                    die("101");
+                }
                 if(!file_exists($this->logfile)) {
                     $this->logfile = 'upload/'.basename($logfile); // make sure only files in the upload directory are processed
                 }
