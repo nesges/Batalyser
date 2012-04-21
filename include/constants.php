@@ -1,6 +1,6 @@
 <?
     global $version;
-    $version = "0.8";
+    $version = "0.9";
 
     // effect_id
     define('DEATH',         '836045448945493');
@@ -17,4 +17,33 @@
     define('COVER',         '836045448945510');
     define('IMMUNE',        '836045448945506');
     define('RESIST',        '836045448945507');
+    
+    // classes
+    define('KNIGHT',        2 );
+    define('WARRIOR',       8 );
+        define('GUARDIAN',      11);
+        define('JUGGERNAUT',    23);
+        define('SENTINEL',      12);
+        define('MARAUDER',      24);
+        
+    define('CONSULAR',      1 );
+    define('INQUISITOR',    7 );
+        define('SAGE',          9 );
+        define('SORCERER',      22);
+        define('SHADOW',        10);
+        define('ASSASSIN',      21);
+    
+    define('TROOPER',       4 );
+    define('BOUNTYHUNTER',  5 );
+        define('COMMANDO',      15);
+        define('MERCENARY',     17);
+        define('VANGUARD',      16);
+        define('POWERTECH',     18);
+    
+    define('SMUGGLER',      3 );
+    define('IMPERIALAGENT', 6 );
+        define('GUNSLINGER',    13);
+        define('SNIPER',        20);
+        define('SCOUNDREL',     14);
+        define('OPERATIVE',     19);
 ?>

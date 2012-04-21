@@ -12,6 +12,20 @@
         'publicize'                 => 'Veröffentlichen',                       // options dialog
         'depublicize'               => 'Veröffentlichung aufheben',             // options dialog
         'download'                  => 'Download',                              // options dialog
+        'male'                      => 'Männlich',
+        'female'                    => 'Weiblich',
+        'republic'                  => 'Republik',
+        'empire'                    => 'Imperium',
+        
+        // class properties
+        'name'                      => 'Name',
+        'class'                     => 'Klasse',
+        'level'                     => 'Level',
+        'race'                      => 'Rasse',
+        'gender'                    => 'Geschlecht',
+        'faction'                   => 'Fraktion',
+        'guild'                     => 'Gilde',
+        'server'                    => 'Server',
 
         // accordion titles
         'fight'                     => 'Kampf',                                 // accordiontitle
@@ -61,6 +75,9 @@
         'bugreport_description'     => 'Beschreibe hier den Fehler',            // options dialog
         'bugreport_yourmail'        => 'Deine E-Mail-Adresse (optional)',       // options dialog
         'thankyou'                  => 'Vielen Dank!',                          // options dialog
+        
+        'yourchars'                 => 'Deine Chars',
+        'createnewchar'             => 'Neuen Char anlegen',
 
         // message dialogs
         'dialog_upload'             => '<p>Der Upload wird gestartet. Im Anschluss wird das Combatlog geparst. Das kann einige Minuten dauern, bitte hab ein wenig Geduld.</p>

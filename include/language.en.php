@@ -12,6 +12,20 @@
         'publicize'                 => 'Publicize',                             // options dialog
         'depublicize'               => 'Revoke Publication',                    // options dialog
         'download'                  => 'Download',                              // options dialog
+        'male'                      => 'Male',
+        'female'                    => 'Female',
+        'republic'                  => 'Republic',
+        'empire'                    => 'Empire',
+        
+        // class properties
+        'name'                      => 'Name',
+        'class'                     => 'Class',
+        'level'                     => 'Level',
+        'race'                      => 'Race',
+        'gender'                    => 'Gender',
+        'faction'                   => 'Faction',
+        'guild'                     => 'Guild',
+        'server'                    => 'Server',
 
         // accordion titles
         'fight'                     => 'Fight',                                 // accordiontitle
@@ -33,7 +47,7 @@
         'forum'                     => 'Forum',                                 // button on the page header
         'logfile'                   => 'Logfile',                               // info on the page header, options dialog
         'loggedinas'                => 'Logged in as',                          // info on the page header
-        'publicurl'                 => 'Public URL'
+        'publicurl'                 => 'Public URL',
         'minfightduration_short'    => 'Min. Fight-Duration (s)',               // info on page header
         'preferedlanguage_short'    => 'Pref. Language',                        // info on page header
 
@@ -61,6 +75,9 @@
         'bugreport_description'     => 'Describe the error here',               // options dialog
         'bugreport_yourmail'        => 'Your mail-adress (optional)',           // options dialog
         'thankyou'                  => 'Thank you!',                            // options dialog
+        
+        'yourchars'                 => 'Your Chars',
+        'createnewchar'             => 'Create new Char',
 
         // message dialogs
         'dialog_upload'             => '<p>Upload is beeing startet. After that, your combatlog will be parsed for the first time. This kann take a couple of minutes, please be patient.</p>

@@ -32,20 +32,13 @@
                     }
                     switch($logdata['effect_id']) {
                         case HEAL:
+                            $used_abilities[$ability_name]['id'] = $logdata['ability_id'];
                             $used_abilities[$ability_name]['heal'] += $logdata['hitpoints'];
                             $used_abilities[$ability_name]['threat'] += $logdata['threat'];
                             $used_abilities[$ability_name]['hit'] += $logdata['hit'];
                             $used_abilities[$ability_name]['crit'] += $logdata['crit'];
                             $used_abilities[$ability_name]['count']++;
-                            // experimental! 
-                            // see crudedragos comments on http://mmo-mechanics.com/swtor/forums/Thread-Batalyser-SWTOR-Combat-Analyser
-                            // $char_class is nonexistent yet, factor should be between 1-0.42 and 1-0.45 depending on charclass
-                            switch($char_class) {
-                                default:
-                                    $classfactor = 0.58;
-                            }
-                            $used_abilities[$ability_name]['overheal'] = $logdata['hitpoints'] - ($logdata['hitpoints'] - $logdata['threat'] * $classfactor);
-                            
+                          
                             $overall['heal'] += $logdata['hitpoints'];
                             $overall['threat'] += $logdata['threat'];
                             $overall['hit'] += $logdata['hit'];
@@ -57,8 +50,87 @@
             
             $duration = $end_timestamp - $start_timestamp;
             if($overall['count']>0) {
+                
+                
                 foreach($used_abilities as $ability_name => $ability) {
-                    $overall['overheal'] += $used_abilities[$ability_name]['overheal'];
+                    // experimental! 
+                    // see crudedragos comments on http://mmo-mechanics.com/swtor/forums/Thread-Batalyser-SWTOR-Combat-Analyser
+                    switch($ability['id']) {
+                        // Medpacs
+                        case "813312187039744" :
+                        case "2176191209406464":
+                        case "864164599824384" :
+                        case "843162209746944" :
+                        case "2176199799341056":
+                        case "813316482007040" :
+                        case "813320776974336" :
+                        case "2628395431100416":
+                        case "807518276157440" :
+                        case "1143320294195200":
+                        case "1481411529801728":
+                        case "2176212684242944":
+                        case "1481402939867136":
+                        case "1481407234834432":
+                        case "807544045961216" :
+                        case "2176216979210240":
+                        case "1481398644899840":
+                        case "2471474505973760":
+                            if($ability['threat']/$ability['heal']>0.5) {
+                                // tank
+                                $threatcoefficient = 0.75;
+                            } else {
+                                // healer, dd
+                                $threatcoefficient = 0.50;
+                            }
+                        default:
+                            switch($parser->logchar2userchar[$char]['class_id']) {
+                                case MERCENARY:
+                                case COMMANDO:
+                                    // healer
+                                    $threatcoefficient = 0.45;
+                                    break;
+                                case SCOUNDREL:
+                                case OPERATIVE:
+                                    // healer
+                                    $threatcoefficient = 0.45;
+                                    break;
+                                case SAGE:
+                                case SORCERER:
+                                    // healer
+                                    $threatcoefficient = 0.42;
+                                    break;
+                                case GUARDIAN:
+                                case JUGGERNAUT:
+                                case SHADOW:
+                                case ASSASSIN:
+                                case VANGUARD:
+                                case POWERTECH:
+                                    if($ability['threat']/$ability['heal']>0.5) {
+                                        // tank
+                                        $threatcoefficient = 0.75;
+                                    } else {
+                                        // dd
+                                        $threatcoefficient = 0.5;
+                                    }
+                                    break;
+                                default:
+                                    // class is not set, try to determine it by calculating the actual threatcoeffecientrange
+                                    // overheal may be calculated wrong if this fails, and that's very likely
+                                    if($ability['threat']/$ability['heal']>0.5) {
+                                        // tank
+                                        $threatcoefficient = 0.75;
+                                    } elseif($ability['threat']/$ability['heal']>0.45) {
+                                        // dd
+                                        $threatcoefficient = 0.5;
+                                    } else {
+                                        // healer
+                                        $threatcoefficient = 0.45;
+                                    }
+                            }
+                    }
+                    if($ability['threat']) {
+                        $ability['overheal'] = $ability['heal'] - $ability['threat'] * pow($threatcoefficient, -1);
+                    }
                     if($ability['heal']>0) {
                         $data .= "<tr>
                                 <td>".$ability_name."</td>
@@ -79,6 +151,8 @@
                             </tr>";
                     }
                 }
+                
+                $overall['overheal'] = $overall['heal'] - $overall['threat'] * pow($threatcoefficient, -1);
             
                 $html = "<div style='border-top: 1px solid silver'>Gesamt:<table>
                     <tr>

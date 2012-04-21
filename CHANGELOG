@@ -1,4 +1,22 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+v0.9
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* fixed div by zero for 0 dmg abilities in Tab_Char_DpsTps_per_Ability
+* fixed div by zero for 0 heal abilities in Tab_Char_HpsTps_per_Ability
+* fixed missing comma in language.en.php (downported)
+* added language to cachefilename in ajax_accordion.php (downported)
+* added char-creation to options dialog
+* fixed a bug in footer.php where language file was loaded to wrong 
+  scope (TRANSLATION MISSING in options dialog fixed with this)
+* fixed overheal functions in Tab_Char_HpsTps_per_Ability (downported)
+* implemented different threatcoefficients depending on class/ability
+* ajax_accordion now reloads up to 3 times if tabs contained no data
+* moved some code from report.php to init.php
+* fixed a bug in class parser where session-log_id preceded local log_id
+* new class Dialog
+* added char assignment to navbar; autoopens after upload
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 v0.8
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 * added onChange event to prefered language selection in login dialog

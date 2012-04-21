@@ -1,17 +1,18 @@
 <?
     session_start();
     if(!$_SESSION['user_id'] && !$_SESSION['log_id']) {
-        die("101");
+        die("Session expired. Please reload.");
     }
     
     $char = str_replace('/', '_insertionattempt_', $_GET['char']);
     $fightnr = str_replace('/', '_insertionattempt_', $_GET['fight']);
     $log_id = str_replace('/', '_insertionattempt_', $_GET['log_id']);
+    $reload = $_GET['reload'];
     
     include_once("include/init.php");
     
     header('content-type: text/html; charset=iso-8859-1');
-    $cache_filename = 'cache/accordion_'.$char.'_'.$log_id.'_'.$fightnr;
+    $cache_filename = 'cache/accordion_'.$char.'_'.$log_id.'_'.$fightnr.'_'.$_SESSION['language'].'_'.$_SESSION['charclass'][$char];
     if(file_exists($cache_filename) && !$cacherenew) {
         readfile($cache_filename);
         exit();
@@ -54,7 +55,7 @@
         $tabname_prefix = 'sum-';
     }
     $parser->gather_logdata();
-    
+
     $tabs = array();
     $tabs[] = new Tab_DpsHpsTps_per_Target(
             $tabname_prefix.preg_replace('/\s/', '', $_char).'-damage',
@@ -101,12 +102,16 @@
                 $end_id
             );
     }
-    
+
+    $tabs_printed=0;
     print "<div>
             <div class='tabs'>
                 <ul>";
                     foreach($tabs as $tab) {
-                        print $tab->nameplate();
+                        if($tab->data || $tab->html) {
+                            print $tab->nameplate();
+                            $tabs_printed++;
+                        }
                     }
     print "     </ul>";
 
@@ -115,12 +120,28 @@
     }
     print "</div>
         </div>";
-        
-    $html = ob_get_flush();
-    if($cache_filename) {
-        if($cache_handle = fopen($cache_filename, "w")) {
-            fwrite($cache_handle, $html);
-            fclose($cache_handle);
+
+    // there seem to be serverload-issues preventing tabs to collect data
+    // this is a simple workarround to at least reinitialise such broken tabs
+    // iow: try again (3 times)
+    if($tabs_printed < 4) {
+        if($reload < 3) {
+            sleep(3);
+            header("Location: ".$_SERVER['PHP_SELF'].'?'.$_SERVER['QUERY_STRING'].'&reload='.($reload+1));
+        } else {
+            // we tried to reload trice, but weren't succesfull to load data afterall
+            // at least these accordions aren't cached, so the user cann reload manually
+            ob_end_clean();
+            print "Die Daten konnten nicht geladen werden. Mit einem Klick auf die Überschrift der Sektion kannst du ein erneutes Laden veranlassen.";
+        }
+    } else {
+        // everything went fine -> print and cache
+        $html = ob_get_flush();
+        if($cache_filename && $tabs_printed > 3) {
+            if($cache_handle = fopen($cache_filename, "w")) {
+                fwrite($cache_handle, $html);
+                fclose($cache_handle);
+            }
         }
     }
 ?>

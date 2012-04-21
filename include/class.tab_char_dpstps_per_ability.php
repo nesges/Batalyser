@@ -61,35 +61,37 @@
             $duration = $end_timestamp - $start_timestamp;
             if($overall['count']>0 && $duration) {
                 foreach($used_abilities as $ability_name => $ability) {
-                    $data .= "<tr>
-                            <td>".$ability_name."</td>
-                            <td>".$ability['count']."</td>
-                            <td>".$ability['damage']."</td>
-                            <td>".round($ability['damage'] / $duration, 2)."</td>
-                            <td>".round($ability['damage'] / $ability['count'], 2)."</td>
-                            <td>".$ability['threat']."</td>
-                            <td>".round($ability['threat'] / $duration, 2)."</td>
-                            <td>".round($ability['threat'] / $ability['count'], 2)."</td>
-                            <td>".round($ability['threat'] / $ability['damage'], 2)."</td>
-                            <td>".($ability['hit']+$ability['crit'])."</td>
-                            <td>".$ability['hit']."</td>
-                            <td>".$ability['crit']."</td>
-                            <td>".$ability['miss']."</td>
-                            <td>".$ability['dodge']."</td>
-                            <td>".$ability['parry']."</td>
-                            <td>".$ability['deflect']."</td>
-                            <td>".$ability['resist']."</td>
-                            <td>".$ability['immune']."</td>
-                            <td>".round(100/$ability['count']*($ability['hit']+$ability['crit']), 2)."%</td>
-                            <td>".round(100/$ability['count']*$ability['hit'], 2)."%</td>
-                            <td>".round(100/$ability['count']*$ability['crit'], 2)."%</td>
-                            <td>".round(100/$ability['count']*$ability['miss'], 2)."%</td>
-                            <td>".round(100/$ability['count']*$ability['dodge'], 2)."%</td>
-                            <td>".round(100/$ability['count']*$ability['parry'], 2)."%</td>
-                            <td>".round(100/$ability['count']*$ability['deflect'], 2)."%</td>
-                            <td>".round(100/$ability['count']*$ability['resist'], 2)."%</td>
-                            <td>".round(100/$ability['count']*$ability['immune'], 2)."%</td>
-                        </tr>";
+                    if($ability['damage']>0) {
+                        $data .= "<tr>
+                                <td>".$ability_name."</td>
+                                <td>".$ability['count']."</td>
+                                <td>".$ability['damage']."</td>
+                                <td>".round($ability['damage'] / $duration, 2)."</td>
+                                <td>".round($ability['damage'] / $ability['count'], 2)."</td>
+                                <td>".$ability['threat']."</td>
+                                <td>".round($ability['threat'] / $duration, 2)."</td>
+                                <td>".round($ability['threat'] / $ability['count'], 2)."</td>
+                                <td>".round($ability['threat'] / $ability['damage'], 2)."</td>
+                                <td>".($ability['hit']+$ability['crit'])."</td>
+                                <td>".$ability['hit']."</td>
+                                <td>".$ability['crit']."</td>
+                                <td>".$ability['miss']."</td>
+                                <td>".$ability['dodge']."</td>
+                                <td>".$ability['parry']."</td>
+                                <td>".$ability['deflect']."</td>
+                                <td>".$ability['resist']."</td>
+                                <td>".$ability['immune']."</td>
+                                <td>".round(100/$ability['count']*($ability['hit']+$ability['crit']), 2)."%</td>
+                                <td>".round(100/$ability['count']*$ability['hit'], 2)."%</td>
+                                <td>".round(100/$ability['count']*$ability['crit'], 2)."%</td>
+                                <td>".round(100/$ability['count']*$ability['miss'], 2)."%</td>
+                                <td>".round(100/$ability['count']*$ability['dodge'], 2)."%</td>
+                                <td>".round(100/$ability['count']*$ability['parry'], 2)."%</td>
+                                <td>".round(100/$ability['count']*$ability['deflect'], 2)."%</td>
+                                <td>".round(100/$ability['count']*$ability['resist'], 2)."%</td>
+                                <td>".round(100/$ability['count']*$ability['immune'], 2)."%</td>
+                            </tr>";
+                    }
                 }
             
                 $html = "<div style='border-top: 1px solid silver'>Gesamt:<table>

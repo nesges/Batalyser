@@ -1,5 +1,5 @@
 <?
-    global $cache_stats_filename, $openOptions, $duration, $logfiles;
+    global $cache_stats_filename, $openOptions, $duration, $logfiles, $guil;
     
     $jquery_common_init = '
                 $( ".accordion" ).accordion({
@@ -52,7 +52,7 @@
                 $( "input:submit, a, button", ".navigation" ).button();
                 $( "a", ".navigation" ).click(function() { return false; });
                 $( "input:submit, button" ).button();
-                $("#accordion_ajax").accordion({
+                $(".accordion_ajax").accordion({
                     header: "h3",
                     clearStyle: true,
                     autoHeight: false,
@@ -62,8 +62,9 @@
                         $("#"+clicked).load("/widgets/"+clicked);
                     }
                 }); 
-                $("h3", "#accordion_ajax").click(function(e) {
+                $("h3", ".accordion_ajax").click(function(e) {
                     var contentDiv = $(this).next("div");
+                    contentDiv.html("<img src='../../images/loading.gif' alt='Loading...'> Loading...");
                     contentDiv.load($(this).find("a").attr("href"));
                 });
                 $( ".dataTable").dataTable( {
@@ -75,6 +76,20 @@
                     "bInfo": false,
                     "bAutoWidth": false,
                     "sDom": "R<\'H\'W>t",
+                    "fnRowCallback": function( nRow, aaData, iDisplayIndex ) {
+                        $("td:odd", nRow).addClass( "col2" );
+                        return nRow;
+                    },
+                    "aaSorting": [[ 0, "asc" ]]
+                });
+                $( ".dataTableSimple").dataTable( {
+                    "bJQueryUI": true,
+                    "bStateSave": false,
+                    "bPaginate": false,
+                    "bFilter": false,
+                    "bSort": true,
+                    "bInfo": false,
+                    "bAutoWidth": false,
                     "fnRowCallback": function( nRow, aaData, iDisplayIndex ) {
                         $("td:odd", nRow).addClass( "col2" );
                         return nRow;
@@ -169,7 +184,7 @@
                             print "modal: false,\n";
                         }
                     ?>
-                    title: '<?=guil('dialog_options_title')?>',
+                    title: '<? print guil('dialog_options_title')?>',
                     width: 800,
                     position: 'top'
                 });
@@ -184,7 +199,7 @@
                 });
                 $( "#dialog_help" ).dialog({
                     autoOpen: false,
-                    title: '<?=guil('dialog_help_title')?>',
+                    title: '<? print guil('dialog_help_title')?>',
                     width: 800,
                     position: 'top'
                 });
@@ -201,25 +216,35 @@
                     return false;
                 });
                 $( "#dialog_login" ).dialog({
-                    title: '<?=guil('dialog_login_title')?>',
+                    title: '<? print guil('dialog_login_title')?>',
                     modal: true
                 });
                 $( "#dialog_error" ).dialog({
-                    title: '<?=guil('dialog_error_title')?>',
+                    title: '<? print guil('dialog_error_title')?>',
                     modal: true
                 });
                 $( "#dialog_message" ).dialog({
-                    title: '<?=guil('dialog_message_title')?>',
+                    title: '<? print guil('dialog_message_title')?>',
                     modal: true
                 });
                 $( "#dialog_upload" ).dialog({
-                    title: '<?=guil('dialog_upload_title')?>',
+                    title: '<? print $guil[$_SESSION['language']]['dialog_upload_title']?>',
                     autoOpen: false,
                     modal: true
                 });
                 $('.dialog').dialog();
+                <?
+                    foreach($dialogs as $dialog) {
+                        print $dialog->jsskeleton();
+                        if($dialog->name == $_GET['opendialog']) {
+                            print $dialog->jsopen();
+                        }
+                    }
+                ?>
             } );
         </script>
     </body>
 </html>
-<?exit()?>
+<?
+    exit();
+?>
