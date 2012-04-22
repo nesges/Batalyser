@@ -49,7 +49,7 @@
                         $this->logfile = '../live/'.$logfile; // load live logs in dev version
                     }
                 } else {
-                    die("201");
+                    die("101");
                 }
                 if(!file_exists($this->logfile)) {
                     $this->logfile = 'upload/'.basename($logfile); // for older version logs; remove this code in a future version
@@ -361,6 +361,9 @@
                                 if(isset($current_fight_id)) {
                                     $logdata['players'][$source_name]['fights'][$current_fight_id]['sum']['threat'] += $threat;
                                     $logdata['players'][$source_name]['fights'][$current_fight_id]['sum']['crit'] += $crit;
+                                    if($target_name != $source_name) {
+                                        $logdata['players'][$source_name]['fights'][$current_fight_id]['target'][$target_id]++;
+                                    }
                                 }
                                 
                                 $previous_timestamp = $timestamp;

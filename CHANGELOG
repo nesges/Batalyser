@@ -1,4 +1,15 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+v0.10
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* graphs replaced by google visualization linecharts
+* moved graph from Tab_Full_Fight_Stats to Tab_Full_Fight_Graphs
+* fights without dmg/heal/threat-data are hidden now
+* fight-headings now display the fights main-target
+* brighter color coding for death-events in Tab_Full_Fight_Stats
+* new graph "All Healers"
+* graphs in Tab_Full_Fight_Graphs now stacked in an accordion
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 v0.9
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 * fixed div by zero for 0 dmg abilities in Tab_Char_DpsTps_per_Ability
@@ -6,13 +17,13 @@ v0.9
 * fixed missing comma in language.en.php (downported)
 * added language to cachefilename in ajax_accordion.php (downported)
 * added char-creation to options dialog
-* fixed a bug in footer.php where language file was loaded to wrong 
+* fixed a bug in footer.php where language file was loaded to wrong
   scope (TRANSLATION MISSING in options dialog fixed with this)
 * fixed overheal functions in Tab_Char_HpsTps_per_Ability (downported)
 * implemented different threatcoefficients depending on class/ability
 * ajax_accordion now reloads up to 3 times if tabs contained no data
 * moved some code from report.php to init.php
-* fixed a bug in class parser where session-log_id preceded local log_id
+* fixed a bug in class parser where session-logid preceeded local log_id
 * new class Dialog
 * added char assignment to navbar; autoopens after upload
 
@@ -28,7 +39,7 @@ v0.8
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 v0.7
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-* replaced every language dependend text with guil() 
+* replaced every language dependend text with guil()
 * added include/language.en.php
 * added cookies to save language and min_fight_duration for 30 days
 
@@ -41,12 +52,12 @@ v0.6
 * added Threat/DMG on Tab_Char_DpsTps_per_Ability
 * publicizing logs is now available
 * fixed some possible sql insertion attacks
-* moved some basic initialisation from report.php, accordion_ajax.phph 
+* moved some basic initialisation from report.php, accordion_ajax.phph
   to include/init.php
 * removed function piechart
 * replaced gd-piecharts with piechart_google.php
 * added damage/ability piechart on Tab_Char_DpsTps_per_Ability
-* added heal/ability piechart on Tab_Char_HpsTps_per_Ability 
+* added heal/ability piechart on Tab_Char_HpsTps_per_Ability
 * moved summary to top on Tab_Enemies_Damage_to_Char
 * added view, publicize and download icons to dialog_options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -65,7 +76,7 @@ v0.5
 * colorcoding of Tab_Full_Fight_Stats rows
 * colorcoding of Tab_DpsHpsTps_per_Target target-name cells
 * all fight-accordions now loaded per ajax
-* removed stats-page caching. it's not needed anymore because all 
+* removed stats-page caching. it's not needed anymore because all
   accordions are cached separately
 * added unlinking of cachefiles to logdelete
 * added support for zip-upload

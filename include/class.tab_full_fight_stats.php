@@ -79,6 +79,9 @@
                         // char
                         if($logdata['effect_id']==DAMAGE) {
                             $row_style = 'style="background-color:#ccffcc"';
+                        } elseif($logdata['effect_id']==DEATH) {
+                            // ...kills something
+                            $row_style = 'style="background-color:#00ff00"';
                         } else {
                             $row_style = 'style="background-color:#ddffdd"';
                         }
@@ -93,6 +96,9 @@
                         // npc
                         if($logdata['effect_id']==DAMAGE) {
                             $row_style = 'style="background-color:#ffcccc"';
+                        } elseif($logdata['effect_id']==DEATH) {
+                            // ...kills player
+                            $row_style = 'style="background-color:#ff0000"';
                         } else {
                             $row_style = 'style="background-color:#ffdddd"';
                         }
@@ -116,10 +122,7 @@
                             </tr>";
                 }
             }
-            $html = "<p>".guil('fullfightstats_note_companion')."</p>
-                     <p><img src='?op=pixelmap&min_id=".$start_id."&max_id=".$end_id."&section=damage-heal_overall&secondary_sections[]=heal&char=".$char."&conditions_lvalue[]=target_name&conditions_rvalue[]=".$char."&eventtext=".$eventtext."' alt='".guil('incdamageprogress')."'></p>
-                     <p><img src='?op=pixelmap&min_id=".$start_id."&max_id=".$end_id."&section=damage-heal_overall&secondary_sections[]=damage&char=".$char."&conditions_lvalue[]=target_name&conditions_rvalue[]=".$char."&eventtext=".$eventtext."' alt='".guil('incdamageprogress')."'></p>";
-
+            $html = "<p>".guil('fullfightstats_note_companion')."</p>";
 
             parent::Tab(
                 $name, 

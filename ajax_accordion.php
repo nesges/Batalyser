@@ -118,8 +118,8 @@
     foreach($tabs as $tab) {
         print $tab->tabcontent();
     }
-    print "</div>
-        </div>";
+    print '</div>
+        </div>';
 
     // there seem to be serverload-issues preventing tabs to collect data
     // this is a simple workarround to at least reinitialise such broken tabs

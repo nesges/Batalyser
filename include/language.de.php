@@ -121,7 +121,7 @@
         'miss'                      => 'Verfehlt',
         'dodge'                     => 'Ausgewichen',
         'parry'                     => 'Parriert',
-        'deflect'                   => 'Schild',
+        'deflect'                   => 'Abgewehrt',
         'resist'                    => 'Widerstanden',
         'immune'                    => 'Immun',
         

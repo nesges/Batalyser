@@ -7,7 +7,7 @@
                     collapsible: true
                 });
                 $( ".tabs" ).tabs();';
-?>
+?>              
         <script type="text/javascript">
             $(document).ajaxComplete(function(e, xhr, settings){
                 <?=$jquery_common_init?>
@@ -44,6 +44,21 @@
                     $( "#dialog_misc" ).dialog( "open" );
                     $("#dialog_misc iframe").attr("src", $(this).attr("href"));
                     return false;
+                });
+                $(".accordion_ajax_ajax").accordion({
+                    header: "h4",
+                    clearStyle: true,
+                    autoHeight: false,
+                    active: false,
+                    collapsible: true,
+                    change: function(event, ui){
+                        var clicked = $(this).find(".ui-state-active").attr("id");
+                        $("#"+clicked).load("/widgets/"+clicked);
+                    }
+                });
+                $("h4", ".accordion_ajax_ajax").click(function(e) {
+                    var contentDiv = $(this).next("div");
+                    contentDiv.html("<iframe frameborder='0' scrolling='no' width='100%' height='550' src='" + $(this).find("a").attr("href") + "'></iframe>");
                 });
             });
             
@@ -161,18 +176,6 @@
                         $( "#min_fight_duration_slider_value" ).val( ui.value );
                     }
                 });
-                // $( "#logrange_slider" ).slider({
-                //     range: true,
-                //     min: 1,
-                //     max: <?= $duration ?>,
-                //     <?
-                //         print "values: [".($_SESSION['min_logrange']?$_SESSION['min_logrange']:0).", ".($_SESSION['max_logrange']?$_SESSION['max_logrange']:$duration)."],\n";
-                //     ?>
-                //     slide: function( event, ui ) {
-                //         $( "#logrange_slider_value1" ).val( ui.values[ 0 ] );
-                //         $( "#logrange_slider_value2" ).val( ui.values[ 1 ] );
-                //     }
-                // });
                 $( "#min_fight_duration_slider_value" ).val( $( "#min_fight_duration_slider" ).slider( "value" ) );
                 $( "#dialog_options" ).dialog({
                     <?

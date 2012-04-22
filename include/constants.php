@@ -1,6 +1,6 @@
 <?
     global $version;
-    $version = "0.9";
+    $version = "0.10";
 
     // effect_id
     define('DEATH',         '836045448945493');
@@ -8,6 +8,7 @@
     define('HEAL',          '836045448945500');
     define('FIGHT_START',   '836045448945489');
     define('FIGHT_END',     '836045448945490');
+    define('REVIVAL',       '812826855735296');
     
     // hit_type_id
     define('MISS',          '836045448945502');

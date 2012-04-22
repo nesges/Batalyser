@@ -798,7 +798,9 @@
                 $summary_threat += $fight['sum']['threat'];
                 $summary_healed += $fight['sum']['healed'];
 
-                if($single_fight_duration >= $_SESSION['min_fight_duration']) {
+                if($single_fight_duration >= $_SESSION['min_fight_duration'] 
+                        && $fight['sum']['damage'] + $fight['sum']['threat'] + $fight['sum']['healed'] > 0) {
+                    
                     $fights_displayed++;
 
                     // Dauer lesbar machen
@@ -809,8 +811,19 @@
                     $__time = $__time - $minutes * 60;
                     $seconds = $__time;
 
+                    $main_target_id=0;
+                    $main_target_count=0;
+                    foreach($fight['target'] as $target_id => $target_count) {
+                        if($target_count > $main_target_count) {
+                            $main_target_id = $target_id;
+                            $main_target_count = $target_count;
+                        }
+                    }
+                    $res = sql_query("select coalesce(".$_SESSION['language'].", de) from actor where id=".$main_target_id);
+                    list($main_target_name) = sql_fetch_row($res);
+
                     $fight_title  = guil('fight')." ".$fight_nr;
-                    $fight_title .= ": ".guil('duration')." ".sprintf('%s:%02s:%02s',$hours,$minutes,$seconds).", ";
+                    $fight_title .= ": ".$main_target_name." | ".guil('duration')." ".sprintf('%s:%02s:%02s',$hours,$minutes,$seconds).", ";
                     $fight_title .= guil('at')." ".date('d.m.', $fight['start_timestamp'])." ".guil('from')." ".date('H:i:s', $fight['start_timestamp'])." ".guil('to')." ".date('H:i:s', $fight['end_timestamp']);
                     $fight_title .= " [".round($fight['sum']['damage'] / $single_fight_duration, 2)." DPS ";
                     $fight_title .= "| ".round($fight['sum']['threat'] / $single_fight_duration, 2)." TPS ";
@@ -823,7 +836,7 @@
                     }
                     $fight_title .= $fight['sum']['threat']." ".guil('threatdone').".";
 
-                    $fight_tab_links .= "<h3><a href='ajax_accordion.php?char=".$char."&log_id=".$_SESSION['log_id']."&fight=".$fight['start_id']."'>".$fight_title."</a></h3><div><img src='../../images/loading.gif' alt='Loading...'> Loading...</div>";
+                    $fight_tab_links .= "<h3><a href='ajax_accordion.php?char=".$char."&log_id=".$_SESSION['log_id']."&fight=".$fight['start_id']."'>".$fight_title."</a></h3><div></div>";
                 } else {
                     $fights_hidden++;
                 }
