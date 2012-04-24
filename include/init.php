@@ -44,11 +44,6 @@
         // error_reporting(E_ALL);
     }
 
-    $disable_ui_element="";
-    if($demo) {
-        $disable_ui_element = "disabled='disabled'";
-    }
-
     $op="";
     if(isset($_POST['op'])) {
         $op = $_POST['op'];

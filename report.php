@@ -12,6 +12,12 @@
     include("include/class.dialog.php");
     include("include/class.charmanagerdialog.php");
     include("include/class.charassigndialog.php");
+    include("include/class.logindialog.php");
+    include("include/class.optionsdialog.php");
+    include("include/class.messagedialog.php");
+    include("include/class.infomessagedialog.php");
+    include("include/class.errormessagedialog.php");
+    include("include/class.helpdialog.php");
     
     // session starters
     switch($op) {
@@ -92,7 +98,7 @@
             $logfiles[$id]['public'] = $public;
             
             $c=0;
-            $res2 = sql_query("select charname, char_id from logfile_char where logfile_id='".$id."'");
+            $res2 = sql_query("select charname, char_id from logfile_char where logfile_id='".$id."' and char_id>0");
             while(list($charname, $char_id) = sql_fetch_row($res2)) {
                 $logfiles[$id]['chars'][$c]['name'] = $charname;
                 $logfiles[$id]['chars'][$c]['id'] = $char_id;
@@ -101,21 +107,25 @@
         }
         
         // load chars
-        $res = sql_query("select c.id, c.name, c.faction_id, c.level, c.gender, g.name, r.".$_SESSION['language'].", s.name, cl.".$_SESSION['language'].", c.class_id
+        $res = sql_query("select c.id, c.name, c.faction_id, c.level, c.gender, g.name, r.".$_SESSION['language'].", s.name, cl.".$_SESSION['language'].", c.class_id, c.server_id, c.race_id, c.guild_id
             from `char` c
                 join guild g on (c.guild_id = g.id)
                 join race r on (c.race_id = r.id)
                 join server s on (c.server_id = s.id)
                 join class cl on (c.class_id = cl.class_id)
                 where user_id='".$_SESSION['user_id']."'");
-        while(list($char_id, $charname, $faction_id, $charlevel, $chargender, $guildname, $race, $server, $classname, $classid) = sql_fetch_row($res)) {
+        while(list($char_id, $charname, $faction_id, $charlevel, $chargender, $guildname, $race, $server, $classname, $classid, $serverid, $raceid, $guildid) = sql_fetch_row($res)) {
             $userchars[$char_id]['name'] = $charname;
             $userchars[$char_id]['faction'] = $faction_id=='r'?guil('republic'):guil('empire');
             $userchars[$char_id]['level'] = $charlevel;
             $userchars[$char_id]['gender'] = $chargender=='m'?guil('male'):guil('female');
+            $userchars[$char_id]['gender_id'] = $chargender;
             $userchars[$char_id]['guild'] = $guildname;
+            $userchars[$char_id]['guild_id'] = $guildid;
             $userchars[$char_id]['race'] = $race;
+            $userchars[$char_id]['race_id'] = $raceid;
             $userchars[$char_id]['server'] = $server;
+            $userchars[$char_id]['server_id'] = $serverid;
             $userchars[$char_id]['class'] = $classname;
             $userchars[$char_id]['class_id'] = $classid;
         }
@@ -134,7 +144,7 @@
             $logfiles[$id]['public'] = $public;
             
             $c=0;
-            $res2 = sql_query("select charname, char_id from logfile_char where logfile_id='".$id."'");
+            $res2 = sql_query("select charname, char_id from logfile_char where logfile_id='".$id."' and char_id>0");
             while(list($charname, $char_id) = sql_fetch_row($res2)) {
                 $logfiles[$id]['chars'][$c]['name'] = $charname;
                 $logfiles[$id]['chars'][$c]['id'] = $char_id;
@@ -214,7 +224,6 @@
                             sql_query("delete from logfile where id=".$logfile_id);
 
                             $errormessage = guil('logfilecontainsnodata');
-                            $errormessage_returnto = "document.location.href=\"?op=noop\"";
                         } else {
                             $notes = '['.date("d.m. H:i", $parser->start_timestamp).'-'.date("H:i", $parser->end_timestamp).'] '.$playerlist.': '.$parser->fight_count.' Kämpfe, '.(count($parser->actors)-1).' Gegner';
                             sql_query("update logfile set notes='".$notes."' where id='".$logfile_id."'");
@@ -224,7 +233,7 @@
                                 if($parser->players) {
                                     foreach(array_keys($parser->players) as $charname) {
                                         if($charname) {
-                                            sql_query("insert into logfile_char (logfile_id, charname) values ('".$logfile_id."', '".$charname."')
+                                            sql_query("insert into logfile_char (logfile_id, charname) values ('".$logfile_id."', '".mysql_escape_string($charname)."')
                                                 on duplicate key update char_id=0");
                                         }
                                     }
@@ -285,11 +294,9 @@
                         }
                     } else {
                         $errormessage = guil('filenotuploaded');
-                        $errormessage_returnto = "document.location.href=\"?op=noop\"";
                     }
                 } else {
                     $errormessage = guil('nofilechosenorfiletolarge');
-                    $errormessage_returnto = "document.location.href=\"?op=noop\"";
                 }
             }
             break;
@@ -311,8 +318,20 @@
                         if($faction_id) {
                             if(sql_query("insert into `char` (name, user_id, server_id, guild_id, faction_id, class_id, level, gender, race_id)
                                 values ('".$_POST['charname']."', '".$_SESSION['user_id']."', '".$_POST['server']."', '".$guild_id."', 
-                                    '".$faction_id."', '".$_POST['charclass']."', '".$_POST['charlevel']."', '".$_POST['chargender']."', '".$_POST['charrace']."')")) {
+                                    '".$faction_id."', '".$_POST['charclass']."', '".$_POST['charlevel']."', '".$_POST['chargender']."', '".$_POST['charrace']."')
+                                    on duplicate key update 
+                                        name='".$_POST['charname']."',
+                                        server_id='".$_POST['server']."',
+                                        guild_id='".$guild_id."',
+                                        faction_id='".$faction_id."',
+                                        class_id='".$_POST['charclass']."',
+                                        level='".$_POST['charlevel']."',
+                                        gender='".$_POST['chargender']."',
+                                        race_id='".$_POST['charrace']."'
+                                    ")) {
                                 $message = "Der Charakter ".$_POST['charname']." wurde angelegt.";
+                                header("Location: ".$_SERVER['PHP_SELF'].'?op=noop&message='.$message);
+                                exit();
                             } else {
                                 $errormessage = "Der Charakter ".$_POST['charname']." konnte nicht angelegt werden.";
                             }
@@ -327,6 +346,22 @@
                 }
             } else {
                 $errormesssage = "Bitte melde dich an um einen Charakter anzulegen.";
+            }
+            break;
+        case "deletechar":
+            if($_SESSION['user_id'] && !$demo) {
+                $res = sql_query("select user_id from `char` where id='".$_GET['charid']."'");
+                list($chars_user_id) = sql_fetch_row($res);
+                if($chars_user_id == $_SESSION['user_id']) {
+                    if(sql_query("delete from `char` where id='".$_GET['charid']."'")) {
+                        header("Location: ".$_SERVER['PHP_SELF'].'?op=noop&message=Character wurde gelöscht');
+                        exit();
+                    } else {
+                        $errormessage = "Character konnte nicht gelöscht werden.";
+                    }
+                    $errormessage = "Keine Berechtigung zum löschen des Characters.";
+                }
+                $errormesssage = "Bitte melde dich an um einen Charakter zu löschen.";
             }
             break;
         case "bugreport":
@@ -391,42 +426,36 @@
         case "piechart":
             header("Location: piechart.php?".$_SERVER['QUERY_STRING']);
             exit();
-        case "charassign":
-            sql_query("delete from logfile_char where logfile_id=".$_SESSION['log_id']);
-            foreach($_POST['selectchar'] as $logchar => $userchar_id) {
-                if($userchar_id>=0) {
-                    sql_query("insert into logfile_char values (".$_SESSION['log_id'].", '".$logchar."', '".$userchar_id."')");
-                }
-            }
-            header("Location: ".$_SERVER['PHP_SELF']);
-            exit;
     }
 
     ob_start();
     include("header.php");
     
     $dialogs = array();
-    if($_SESSION['log_id'] && $_SESSION['user_id']) {
-        $dialogs[] = new CharassignDialog();
-    }
 
     if($errormessage) {
-        if(!$errormessage_returnto) {
-            $errormessage_returnto = 'document.location.href=\'?op=noop\'';
-        }
-        print "<div id='dialog_error'><p>$errormessage</p><center><button onClick='".$errormessage_returnto."'>".guil('back')."</button></center></div>";
-        include("footer.php");
+        $dialogs[] = new ErrorMessageDialog($errormessage);
     }
-
     if($message) {
         $message = str_replace('&amp;', '&', $message);
         $message = preg_replace('#(https?://\S+)#', '<a href="$1">$1</a>', $message);
-        print "<div id='dialog_message'><p>".$message."</p><center><button onClick='document.location.href=\"".$_SERVER['PHP_SELF']."?op=noop\"'>".guil('back')."</button></center></div>";
-        include("footer.php");
+        $dialogs[] = new InfoMessageDialog($message);
     }
 
+    if($_SESSION['user_id']) {
+        if($_SESSION['log_id']) {
+            $dialogs[] = new CharassignDialog();
+        }
+        $dialogs[] = new OptionsDialog();
+    } else {
+        if(!$logfiles[$_SESSION['log_id']]['public']) {
+            $dialogs[] = new LoginDialog($login_message);
+        }
+    }
+    $dialogs[] = new HelpDialog();
+
     // only allow own and public flagged logs to be viewed
-    if($logfiles) {
+    if($logfiles && isset($_SESSION['log_id'])) {
         foreach($logfiles as $logfile_id => $logfile) {
             if($logfile_id == $_SESSION['log_id']) {
                 if($logfile['uploader_id'] != $_SESSION['user_id'] && !$logfile['public']) {
@@ -438,59 +467,18 @@
             }
         }
     }
-        
-    if(! $_SESSION['user_id'] && !$logfiles[$_SESSION['log_id']]['public']) {
-        print "<div id='dialog_login'>
-                <p>".guil('dialog_login_useforumacc')."</p>
-                <form action='' method='POST'>
-                    <table>
-                        <tr><td>".guil('username').":</td>        <td><input type='text' name='username'></td></tr>
-                        <tr><td>".guil('password').":</td>        <td><input type='password' name='password'></td></tr>
-                        <tr><td>".guil('preferedlanguage').":</td><td>
-                            <select name='language' onChange='document.location.href=\"?op=setlanguage&language=\"+this.value'>";
-        foreach(array('de' => 'Deutsch', 'en' => 'English') as $short => $long) {
-            if($_SESSION['language'] == $short) {
-                $selected = "selected='selected'";
-            } else {
-                $selected = "";
-            }
-            print "<option value='".$short."' ".$selected.">".$long."</option>";
-        }
-        print "</select>
-                        </td></tr>
-                        <tr><td colspan='2' align='center'><input type='submit' value='".guil('login')."'></td></tr>
-                    </table>";
-        if($login_message) {
-            print "<p style='color:red; text-align:center'>".$login_message."</p>";
-        }
-        print "<input type='hidden' name='op' value='login'>
-
-                </form>
-                <p><a href='/forum/ucp.php?mode=register'>".guil('register')."</a> <a href='?op=demo'>".guil('startdemo')."</a></p>
-            </div>";
-            include("footer.php");
-    }
 
     // let's go
 
     print "<div id='navbar' style='float:left'>
             <button onClick='document.location.href=\"/forum\"'>".guil('forum')."</button>";
     foreach($dialogs as $dialog) {
-        print $dialog->htmlskeleton();
-        print $dialog->buttonskeleton();
+        if(!$dialog->nobutton) {
+            print $dialog->htmlskeleton_button();
+        }
     }
     print "</div>";
 
-    if($_SESSION['log_id']) {
-        print "<div style='float:left; margin-left:25px'>
-            <b>".guil('logfile').":</b>                 ".$logfiles[$_SESSION['log_id']]['notes']." |
-            <b>".guil('minfightduration_short').":</b>  ".$_SESSION['min_fight_duration']." |
-            <b>".guil('preferedlanguage_short').":</b>  ".$languages[$_SESSION['language']];
-        if($logfiles[$_SESSION['log_id']]['public']) {
-            print " | <a style='color:red' href='?op=setopt&logfile=".$_SESSION['log_id']."'>".guil('publicurl')."</a>";
-        }
-        print "</div>";
-    }
     print "<div style='text-align:right'>";
     if($_SESSION['user_id']) {
         print guil('loggedinas').": ".$_SESSION['user_name']."
@@ -501,245 +489,14 @@
             <button onClick='document.location.href=\"/forum/ucp.php?mode=register\"'>".guil('register')."</button>";
     }
     print "<button id='button_open_dialog_options'>".guil('options')."</button>
-            <button id='button_open_dialog_help'>?</button>
+           <button id='button_open_dialog_help'>?</button>
         </div>
-        
         <div id='dialog_misc' style='padding:0'><iframe style='margin:0' src='' frameborder='0' width='800' height='600' scrolling='no'></iframe></div>
+        <div id='dialog_upload'>".guil('dialog_upload')."</div>";
 
-        <div id='dialog_options'>
-            <div id='accordion_options'>
-                <h3><a href='#'>".guil('view')."</a></h3>
-                <div>
-                    <form action='' method='GET'>
-                        <table width='100%'>
-                            <tr>
-                                <td nowrap='nowrap'>".guil('view_chooselogfile').":</td>
-                                <td colspan='2'><select name='logfile'>";
-                                foreach($logfiles as $logfile_id => $logfile) {
-                                    $selected = "";
-                                    if($logfile_id == $_SESSION['log_id']) {
-                                        $selected = " selected='selected' ";
-                                    }
-                                    print "<option $selected value='".$logfile_id."'>".$logfile['notes']."</option>";
-                                }
-                                print "</select></td>
-                            </tr>
-                            <tr>
-                                <td nowrap='nowrap'>".guil('minfightduration').":</td>
-                                <td width='70%'><div id='min_fight_duration_slider'></div></td>
-                                <td><input type='text' id='min_fight_duration_slider_value' name='min_fight_duration' value='' style='width:3em' readonly='readonly'></td>
-                            </tr>
-                            <tr>
-                                <td>".guil('preferedlanguage').":</td>
-                                <td>
-                                    <select name='prefered_language'>";
-                                        foreach($languages as $short => $long) {
-                                            $selected = "";
-                                            if($short == $_SESSION['language']) {
-                                                $selected = "selected='selected'";
-                                            }
-                                            print "<option $selected value='$short'>$long</option>";
-                                        }
-                                    print "</select>
-                                </td>
-                                <td></td>
-                            </tr>
-                            <tr>
-                                <td colspan='3' align='right'><input type='submit' value='".guil('viewlogwiththissettings')."'></td>
-                            </tr>
-                        </table>
-                        <input type='hidden' name='op' value='setopt'>
-                    </form>
-                </div>";
-
-    if($_SESSION['user_id']) {
-        print "<h3><a href='#'>".guil('upload')."</a></h3>
-                <div>
-                    <form action='' method='POST' enctype='multipart/form-data' name='uploadform'>
-                        <input type='hidden' name='MAX_FILE_SIZE' value='".MAX_FILE_SIZE."'>
-
-                        <table>
-                            <tr>
-                                <td colspan='2'>".guil('zipfilenotice')."</td>
-                            </tr>
-                            <tr>
-                                <td colspan='2'>
-                                    ".guil('logfile').": (max. ".sprintf("%s", 1024 * (MAX_FILE_SIZE / pow(1024, floor((strlen(MAX_FILE_SIZE) - 1) / 3))))."kB): <input type='file' name='logfile'>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>".guil('logpublicize')."</td>
-                                <td><input type='checkbox' name='publicize' checked='checked'></td>
-                            </tr>
-                            <!--tr>
-                                <td>".guil('logmergeable')."</td>
-                                <td><input type='checkbox' name='mergeable' checked='checked'></td>
-                            </tr-->
-                        </table>
-                        <p style='text-align:right'><input type='submit' value='".guil('startupload')."' id='button_start_upload' onClick='document.uploadform.submit()' $disable_ui_element>";
-                        if($demo) {
-                            print "<div style='text-align:right'><small>".guil('upload_demonotice')."</small></div>";
-                        }
-                        print "
-                        <input type='hidden' name='op' value='logupload'>
-                    </form>
-                </div>";
-        }
-
-            if($logfiles && $_SESSION['user_id']) {
-                print "<h3><a href='#'>".guil('availablelogs')."</a></h3>
-                <div>
-                    <p>".guil('yourlogs').":</p>
-                    <form action='' method='POST'>
-                        <table class='dataTableAutoWidth' id='datatable_optionsLogfiles'>
-                            <thead>
-                                <tr>
-                                    <th></th>
-                                    <th>".guil('date')."</th>
-                                    <th>".guil('from')."</th>
-                                    <th></th>
-                                    <th>".guil('to')."</th>
-                                    <th>".guil('chars')."</th>
-                                    <th>".guil('fights')."</th>
-                                    <th>".guil('enemies')."</th>
-                                    <th>".guil('filename')."</th>
-                                    <th>".guil('upload')."</th>
-                                    <th>".guil('actions')."</th>
-                                </tr>
-                            </thead>
-                            <tbody>";
-                foreach($logfiles as $logfile_id => $logfile) {
-                    // exclude public logs
-                    if($logfile['uploader_id']==$_SESSION['user_id']) {
-                        print "<tr>
-                                    <td><input type='checkbox' name='delete_logfile[]' value='".$logfile_id."'></td>";
-                        preg_match('/\[(\d\d\.\d\d\.) (\d\d:\d\d)-(\d\d:\d\d)\] (.*?): (\d+) Kämpfe, (\d+) Gegner/', $logfile['notes'], $matches);
-                        print "
-                                    <td>".$matches[1]."</td>
-                                    <td>".$matches[2]."</td>
-                                    <td>-</td>
-                                    <td>".$matches[3]."</td>
-                                    <td>".$matches[4]."</td>
-                                    <td>".$matches[5]."</td>
-                                    <td>".$matches[6]."</td>
-                                    <td>".preg_replace('#/?upload(/'.$_SESSION['user_id'].')?/?#', '', $logfile['filename'])."</td>
-                                    <td>".date('Y-m-d H:i:s', $logfile['timestamp'])."</td>
-                                    <td>
-                                        <table cellspacing='0' cellpadding='0'>
-                                            <tr>
-                                                <td><span class='ui-icon ui-icon-play' onClick='document.location.href=\"?op=setopt&logfile=".$logfile_id."\"' title='".guil('view')."'></span></td>";
-                        if(!$logfile['public']) {
-                            print "<td><span class='ui-icon ui-icon-unlocked' onClick='document.location.href=\"?op=logpublicize&logfile=".$logfile_id."\"' title='".guil('publicize')."'></span></td>";
-
-                        } else {
-                            print "<td><span class='ui-icon ui-icon-locked' onClick='document.location.href=\"?op=logdepublicize&logfile=".$logfile_id."\"' title='".guil('depublicize')."'></span></td>";
-                        }
-                        print "<td><span class='ui-icon ui-icon-disk' onClick='document.location.href=\"?op=logdownload&logfile=".$logfile_id."\"' title='".guil('download')."'></span></td>
-                                            </tr>
-                                        </table>
-                                    </td>
-                                </tr>";
-                    }
-                }
-                print "</tbody>
-                        </table>
-                        <input type='hidden' name='op' value='logdelete'>
-                        <p style='text-align:left'><input type='submit' value='".guil('deletechosenlogs')."' $disable_ui_element></p>";
-                        if($demo) {
-                            print "<div style='text-align:left'><small>".guil('delete_demonotice')."</small></div>";
-                        }
-                print "</form>
-                </div>";
-            }
-            if($_SESSION['user_id']) {               
-                print "<h3><a href='#'>".guil('yourchars')."</a></h3>
-                    <div>";
-                if(count($userchars)>0) {
-                    print "<table class='dataTableSimple'>
-                                <thead>
-                                    <tr>
-                                        <th>".guil('name')."</th>
-                                        <th>".guil('class')."</th>
-                                        <th>".guil('level')."</th>
-                                        <th>".guil('race')."</th>
-                                        <th>".guil('gender')."</th>
-                                        <th>".guil('faction')."</th>
-                                        <th>".guil('guild')."</th>
-                                        <th>".guil('server')."</th>
-                                    </tr>
-                                </thead>
-                                <tbody>";
-                    foreach($userchars as $char_id => $char) {
-                        print "<tr>
-                                <td>".$char['name']."</td>
-                                <td>".$char['class']."</td>
-                                <td>".$char['level']."</td>
-                                <td>".$char['race']."</td>
-                                <td>".$char['gender']."</td>
-                                <td>".$char['faction']."</td>
-                                <td>".$char['guild']."</td>
-                                <td>".$char['server']."</td>
-                            </tr>";
-                    }
-                    print "</tbody></table>";
-                }
-                print "<p>".guil('createnewchar').":</p>
-                        <form action='' method='POST'>
-                            <table>
-                                <tr><td>".guil('name').":</td><td><input type='text' name='charname' size='50'></td></tr>
-                                <tr><td>".guil('class').":</td><td>
-                                    <select name='charclass'>";
-                $res = sql_query("select class_id, parent_class_id, ".$_SESSION['language']." from class order by ".$_SESSION['language']);
-                while(list($class_id, $parent_class_id, $class_name) = sql_fetch_row($res)) {
-                    print "<option value='".$class_id."'>".$class_name."</option>";
-                }
-                print "</select>
-                                </td></tr>
-                                <tr><td>".guil('guild').":</td><td><input type='text' name='guild' size='50'></td></tr>
-                                <tr><td>".guil('server').":</td><td>
-                                    <select name='server'>";
-                $res = sql_query("select id, name from server order by name");
-                while(list($server_id, $server_name) = sql_fetch_row($res)) {
-                    print "<option value='".$server_id."'>".$server_name."</option>";
-                }
-                print "</select>
-                                </td></tr>
-                                <tr><td>".guil('level').":</td><td><input type='text' name='charlevel' value='50' size='3'></td></tr>
-                                <tr><td>".guil('race').":</td><td><select name='charrace'>";
-                $res = sql_query("select id, ".$_SESSION['language']." from race order by ".$_SESSION['language']);
-                while(list($race_id, $race_name) = sql_fetch_row($res)) {
-                    print "<option value='".$race_id."'>".$race_name."</option>";
-                }
-                print "</select></td></tr>
-                            <tr><td>".guil('gender').":</td><td><select name='chargender'><option value='m'>".guil('male')."</option><option value='f'>".guil('female')."</option></select></td></tr>
-                            </table>
-                            <input type='hidden' name='op' value='createchar'>
-                            <p style='text-align:left'><input type='submit' value='".guil('createnewchar')."' $disable_ui_element></p>
-                        </form>
-                    </div>";
-            }
-            
-            print "<h3><a href='#'>".guil('sendbugreport')."</a></h3>
-                <div>
-                    ".guil('bugreport_explanation')."
-                    <form action='' method='POST'>
-                        <table>
-                            <tr><td valign='top'>".guil('bugreport_shorttitle').":</td><td><input type='text' name='subject' maxlength='40' size='40'></td></tr>
-                            <tr><td valign='top'>".guil('bugreport_description').":</td><td><textarea name='bugreport' cols='70' rows='6'></textarea></td></tr>
-                            <tr><td>".guil('bugreport_yourmail').":</td><td><input type='text' name='email' size='70' value='".($_SESSION['user_email'])."'></tr>
-                            <tr><td colspan='2' align='right'>".guil('thankyou')." <input type='submit'></td></tr>
-                        </table>
-                        <input type='hidden' name='op' value='bugreport'>
-                    </form>
-                </div>
-            </div><!-- accordion options -->
-        </div><!-- dialog options -->
-
-        <div id='dialog_upload'>".guil('dialog_upload')."</div>
-
-        <div id='dialog_help'>
-            <img src='http://geekandpoke.typepad.com/.a/6a00d8341d3df553ef014e8b8f1c5b970d-800wi' alt=''>
-        </div>";
+    foreach($dialogs as $dialog) {
+        print $dialog->htmlskeleton();
+    }
 
     if(! $_SESSION['min_fight_duration'] || !$_SESSION['log_id']) {
         include("footer.php");
@@ -756,7 +513,92 @@
         header("Location: ?op=setopt&logfile=&message=Das Logfile enthält keine Chardaten");
         exit();
     }
+    
+    // loginfo
+    if($_SESSION['log_id']) {
+        $html = "<div>";
+        if($logfiles[$_SESSION['log_id']]['public']) {
+            $html .= " <p><a style='color:red' href='?op=setopt&logfile=".$_SESSION['log_id']."'>".guil('publicurl')."</a></p>";
+        }
+        $html .= "<p>
+                <b>".guil('logfile').":</b> ".$logfiles[$_SESSION['log_id']]['notes']."<br>
+                <b>".guil('filename').":</b> ".preg_replace('#upload/\d+/#', '', $logfiles[$_SESSION['log_id']]['filename'])."<br>
+                <b>".guil('uploaddate').":</b> ".date('Y-m-d H:i:s', $logfiles[$_SESSION['log_id']]['timestamp'])."<br>
+                <b>".guil('assignedchars').":</b> ";
+        if($logfiles[$_SESSION['log_id']]['chars']) {
+            $logchars = array();
+            foreach($logfiles[$_SESSION['log_id']]['chars'] as $logchar) {
+                $logchars[] = $logchar['name'];
+            }
+            if(count($logchars)>0) {
+                $html .= join(', ', $logchars);
+            } else {
+                $html .= "<i>".guil('none')."</i>";
+            }
+        } else {
+            $html .= "<i>".guil('none')."</i>";
+        }
+        $html .= "</p>
+            <p><big>".guil('options').":</big><br>
+                <b>".guil('minfightduration').":</b> ".$_SESSION['min_fight_duration']."<br>
+                <b>".guil('preferedlanguage').":</b> ".$languages[$_SESSION['language']]."
+            </p>
+        </div>";
 
+        $guildmemberslog = array();
+        if($userchars) {
+            foreach($userchars as $userchar_id => $userchar) {
+                $userguildids[] = $userchar['guild_id'];
+            }
+
+            $res = sql_query("SELECT unix_timestamp(l.timestamp), l.notes, l.id, c.name, c.guild_id, g.name
+                FROM `char` c, logfile_char lc, logfile l, guild g
+                    where c.guild_id in (".join(',',$userguildids).")
+                        and c.id = lc.char_id
+                        and l.id = lc.logfile_id
+                        and g.id = c.guild_id
+                        and public=1
+                        and c.id not in (".join(',', array_keys($userchars)).")
+                    order by timestamp desc");
+            while(list($guildmemberslog_timestamp, $guildmemberslog_notes, $guildmemberslog_id, $guildmemberslog_charname, $guildmemberslog_guild_id, $guildmemberslog_guildname) = sql_fetch_row($res)) {
+                $guildmemberslog[$guildmemberslog_id]['timestamp'] = $guildmemberslog_timestamp;
+                $guildmemberslog[$guildmemberslog_id]['notes'] = $guildmemberslog_notes;
+                $guildmemberslog[$guildmemberslog_id]['charname'] = $guildmemberslog_charname;
+                $guildmemberslog[$guildmemberslog_id]['guild_id'] = $guildmemberslog_guild_id;
+                $guildmemberslog[$guildmemberslog_id]['guildname'] = $guildmemberslog_guildname;
+            }
+        }
+        
+        if(count($guildmemberslog) > 0) {
+            $html .= "
+            <big>".guil('guildiespubliclogs').":</big>
+            <table class='dataTableSimple'>
+                <thead>
+                    <tr>
+                        <th>".guil('uploaddate')."</th>
+                        <th>Character</th>
+                    </tr>
+                </thead>
+                <tbody>";
+        
+            foreach($guildmemberslog as $gmlog_id => $gmlog) {
+                $html .= "<tr>
+                        <td>".date('Y-m-d H:i:s', $gmlog['timestamp'])."</td>
+                        <td><a title='<big>".htmlentities($gmlog['guildname'])."</big><br>".htmlentities($gmlog['notes'])."' href='?op=setopt&logfile=".$gmlog_id."'>".$gmlog['charname']."</a></td>
+                    </tr>";
+            }
+            $html .= "</tbody></table>";
+        }
+        
+        $dialog = new Dialog('loginfo', 'Loginfo', $html, 0, 1);
+        $dialog->nobutton = 1;
+        $dialog->position = "['right', 'bottom']";
+        $dialog->width = 400;
+        $dialogs[] = $dialog;
+        print $dialog->htmlskeleton();
+        
+        unset($html);
+    }
     unset($res);
 
     print "<div class='accordion'>";
@@ -813,30 +655,46 @@
 
                     $main_target_id=0;
                     $main_target_count=0;
-                    foreach($fight['target'] as $target_id => $target_count) {
-                        if($target_count > $main_target_count) {
-                            $main_target_id = $target_id;
-                            $main_target_count = $target_count;
+                    if(count($fight['target']) > 0) {
+                        foreach($fight['target'] as $target_id => $target_count) {
+                            if($target_count > $main_target_count) {
+                                $main_target_id = $target_id;
+                                $main_target_count = $target_count;
+                            }
+                        }
+                        if($main_target_id) {
+                            if(is_numeric($main_target_id)) {
+                                $res = sql_query("select coalesce(".$_SESSION['language'].", de) from actor where id=".$main_target_id);
+                                list($main_target_name) = sql_fetch_row($res);
+                            } else {
+                                $main_target_name = $main_target_id;
+                            }
                         }
                     }
-                    $res = sql_query("select coalesce(".$_SESSION['language'].", de) from actor where id=".$main_target_id);
-                    list($main_target_name) = sql_fetch_row($res);
 
-                    $fight_title  = guil('fight')." ".$fight_nr;
-                    $fight_title .= ": ".$main_target_name." | ".guil('duration')." ".sprintf('%s:%02s:%02s',$hours,$minutes,$seconds).", ";
-                    $fight_title .= guil('at')." ".date('d.m.', $fight['start_timestamp'])." ".guil('from')." ".date('H:i:s', $fight['start_timestamp'])." ".guil('to')." ".date('H:i:s', $fight['end_timestamp']);
-                    $fight_title .= " [".round($fight['sum']['damage'] / $single_fight_duration, 2)." DPS ";
-                    $fight_title .= "| ".round($fight['sum']['threat'] / $single_fight_duration, 2)." TPS ";
-                    $fight_title .= "| ".round($fight['sum']['healed'] / $single_fight_duration, 2)." HPS ] ";
+                    $fight_title  = guil('fight')." ".$fight_nr
+                        .": ".date('H:i:s', $fight['start_timestamp'])
+                        ." | ".sprintf('%s:%02s:%02s',$hours,$minutes,$seconds)
+                        ." | ".htmlentities($main_target_name);
+                    
+                    $fight_tooltip= '<big>'.guil('fight').' '.$fight_nr.': '.$main_target_name.'</big>'
+                        .'<br>'.guil('duration').': '.sprintf('%s:%02s:%02s',$hours,$minutes,$seconds)
+                        .'<br>'.guil('at')." ".date('d.m.', $fight['start_timestamp'])." ".guil('from')." ".date('H:i:s', $fight['start_timestamp'])." ".guil('to')." ".date('H:i:s', $fight['end_timestamp'])
+                        .'<br>';
                     if($fight['sum']['damage']>0) {
-                        $fight_title .= $fight['sum']['damage']." ".guil('damagedone').", ";
+                        $fight_tooltip .= "<br>".$fight['sum']['damage']." ".guil('damagedone')." (".round($fight['sum']['damage'] / $single_fight_duration, 2)." DPS)";
                     }
                     if($fight['sum']['healed']>0) {
-                        $fight_title .= $fight['sum']['healed']." ".guil('healdone').", ";
+                        $fight_tooltip .= "<br>".$fight['sum']['healed']." ".guil('healdone')." (".round($fight['sum']['healed'] / $single_fight_duration, 2)." HPS)";
                     }
-                    $fight_title .= $fight['sum']['threat']." ".guil('threatdone').".";
+                    if($fight['sum']['threat']>0) {
+                        $fight_tooltip .= "<br>".$fight['sum']['threat']." ".guil('threatdone')." (".round($fight['sum']['threat'] / $single_fight_duration, 2)." TPS)";
+                    }
+                    if($fight['sum']['heal_received']>0) {
+                        $fight_tooltip .= "<br>".$fight['sum']['heal_received']." ".guil('healreceived')." (".round($fight['sum']['heal_received'] / $single_fight_duration, 2)." HPS)";
+                    }
 
-                    $fight_tab_links .= "<h3><a href='ajax_accordion.php?char=".$char."&log_id=".$_SESSION['log_id']."&fight=".$fight['start_id']."'>".$fight_title."</a></h3><div></div>";
+                    $fight_tab_links .= "<h3><a title='".htmlentities($fight_tooltip, ENT_QUOTES)."' href='ajax_accordion.php?char=".$char."&log_id=".$_SESSION['log_id']."&fight=".$fight['start_id']."'>".$fight_title."</a></h3><div></div>";
                 } else {
                     $fights_hidden++;
                 }
@@ -875,290 +733,13 @@
         print "</div>"; // accordion
     } // foreach $char
     print "</div>"; // accordion
-
-
-
+    
     sql_logout();
     unset($guil);
     unset($output_accordion_page);
     unset($parser);
 
     include("footer.php");
-
-    function cachefilename_pixelmap($start_id, $end_id, $section, $snd_sections, $char, $conditions, $eventtext=1, $dim_x=1500, $dim_y=300) {
-        if(isset($snd_sections) && is_array($snd_sections)) {
-            $snd_sections_list = join('_', $snd_sections);
-        } else {
-            $snd_sections_list = 'none';
-        }
-        if(isset($conditions) && is_array($conditions)) {
-            $conditions_list = md5(join('', $conditions));
-        } else {
-            $conditions_list = 'none';
-        }
-
-        return 'cache/pixelmap_'.$_SESSION['log_id'].'_'.$start_id.'-'.$end_id.'_'.$char.'_'.$conditions_list.'_'.$section.'_'.$snd_sections_list.$dim_x.'x'.$dim_y.'_'.$eventtext;
-    }
-
-    function pixelmap($start_id, $end_id, $section, $snd_sections, $char, $conditions, $eventtext=1, $dim_x=1500, $dim_y=300) {
-        global $cacherenew;
-
-        $parser = new Parser($logfiles[$_SESSION['log_id']]['filename'], $_SESSION['log_id']);
-        $parser->read_loglines($_GET['min_id'], $_GET['max_id']);
-        $parser->gather_logdata();
-
-        $cache_filename = cachefilename_pixelmap($start_id, $end_id, $section, $snd_sections, $char, $conditions, $eventtext, $dim_x, $dim_y);
-        if(file_exists($cache_filename) && !$cacherenew==1) {
-            readfile($cache_filename);
-            exit();
-        }
-
-        $s1overall = 0;
-        if(preg_match('/(.*?)_overall$/', $section, $matches)) {
-            $s1overall = 1;
-            $section = $matches[1];
-        }
-
-        $section_operation="";
-        if(preg_match('#^(.*?)([*/+-])(.*)$#', $section, $matches)) {
-            $section_factor1 = $matches[1];
-            $section_operation = $matches[2];
-            $section_factor2 = $matches[3];
-        }
-
-        $min_y = 0;
-        $max_y = 0;
-        $max_y_overall = 0;
-        $last_fetch = $start_id;
-        for($id=$start_id; $id <= $end_id; $id++) {
-            if($id >= $last_fetch + PARSER_MAX_FETCH) {
-                $last_fetch +=PARSER_MAX_FETCH;
-                unset($parser->loglines);
-                unset($parser->logdata);
-                $parser->read_loglines($id, $id+PARSER_MAX_FETCH);
-                $parser->gather_logdata();
-            }
-            $conditions_complied=1;
-            foreach($conditions as $lvalue => $rvalue) {
-                if($rvalue == $char) {
-                    if(!preg_match('/^'.$char.'(:.+)?/', $parser->logdata[$id][$lvalue])) {
-                        $conditions_complied=0;
-                        break;
-                    }
-                } else {
-                    if($parser->logdata[$id][$lvalue]!=$rvalue) {
-                        $conditions_complied=0;
-                        break;
-                    }
-                }
-            }
-            if($conditions_complied) {
-                switch($section_operation) {
-                    case "+": $line_value = $parser->logdata[$id][$section_factor1] + $parser->logdata[$id][$section_factor2]; break;
-                    case "-": $line_value = $parser->logdata[$id][$section_factor1] - $parser->logdata[$id][$section_factor2]; break;
-                    case "*": $line_value = $parser->logdata[$id][$section_factor1] * $parser->logdata[$id][$section_factor2]; break;
-                    case "/": $line_value = $parser->logdata[$id][$section_factor1] / $parser->logdata[$id][$section_factor2]; break;
-                    default:  $line_value = $parser->logdata[$id][$section];
-                }
-                if($s1overall) {
-                    $max_y_overall = $max_y_overall + $line_value;
-                    $max_y = max($max_y, $max_y_overall);
-                    $min_y = min($min_y, $max_y_overall);
-                } else {
-                    $max_y = max($max_y, $line_value);
-                    $min_y = min($min_y, $line_value);
-                }
-            }
-        }
-        $max_x = $end_id-$start_id;
-        $x_offset = 50;
-        $y_offset = 30;
-        if($max_y) {
-            $x_faktor = ($dim_x - $x_offset) / ($max_x+1);
-            $y_faktor = ($dim_y - $y_offset) / ($max_y+1);
-
-            $image = imagecreatetruecolor ($dim_x+50, $dim_y);
-            $color['damage-heal']         = imagecolorallocate($image, 255,   0,   0);
-            $color['damage_received']     = imagecolorallocate($image, 180,   0,   0);
-            $color['threat']              = imagecolorallocate($image, 255,   0,   0);
-            $color['threat_overall']      = imagecolorallocate($image, 150,   0,   0);
-            $color['damage']              = imagecolorallocate($image, 0,   150,   0);
-            $color['damage_dealt']        = imagecolorallocate($image, 0,   150,   0);
-            $color['heal']                = imagecolorallocate($image, 0,     0, 255);
-            $color['heal_received']       = imagecolorallocate($image, 0,     0, 255);
-            $color['red']                 = imagecolorallocate($image, 255,   0,   0);
-            $color['black']               = imagecolorallocate($image, 0,     0,   0);
-            $color['white']               = imagecolorallocate($image, 255, 255, 255);
-
-            // white bg
-            imagefilledrectangle($image, 0, 0, $dim_x+50, $dim_y, $color['white']);
-            // title
-            $title = $section;
-            foreach($conditions as $lvalue => $rvalue) {
-                $title .= " ".$lvalue."=".$rvalue;
-            }
-            $title .= " [".date('H:i:s', $parser->logdata[$start_id]['timestamp'])." - ".date('H:i:s', $parser->logdata[$end_id]['timestamp'])."]";
-            imagestring($image, 5, $x_offset+2, $dim_y-$y_offset+15, $title, $color[$section]);
-            // rulers
-            imageline($image, 0, $dim_y-$y_offset,     $dim_x, $dim_y-$y_offset,  $color['black']);
-            imageline($image, $x_offset-1, $dim_y,     $x_offset-1, 0,            $color['black']);
-            // ruler x-axis
-            imagestring($image, 2, $x_offset+2, $dim_y-($y_offset), 'time(s)', $color['black']);
-            for($r=$max_x/20; $r<=$max_x; $r+=$max_x/20) {
-                if(round($r)>0) {
-                    imagestring($image, 2, $x_offset + ($x_faktor*ceil($r)), $dim_y-($y_offset), ceil($r), $color['black']);
-                }
-            }
-
-            // ruler y-axis
-            imagestringup($image, 2, $x_offset - 14, $dim_y-($y_offset+2), $section, $color['black']);
-            for($r=0; $r<=$max_y; $r+=$max_y/15) {
-                imagestring($image, 2, 1, $dim_y-$y_offset-($y_faktor*ceil($r)), ceil($r), $color['black']);
-            }
-
-            // section-graph
-            if(isset($snd_sections)) {
-                $draw_sections = $snd_sections;
-                $draw_sections[] = $section;
-            } else {
-                $draw_sections = array($section);
-            }
-
-            $s2=0;
-            $line_value = array();
-            foreach($draw_sections as $draw_section) {
-                $t=0;
-                $last_offset=1;
-                $sum = 0;
-                $s2overall = 0;
-                $draw_section_operation = "";
-
-                if($draw_section == $section) {
-                    $s2overall = $s1overall;
-                } elseif(preg_match('/(.*?)_overall$/', $draw_section)) {
-                    $s2overall = 1;
-                    $draw_section = $matches[1];
-                }
-
-                if(preg_match('#^(.*?)([*/+-])(.*)$#', $draw_section, $matches)) {
-                    $draw_section_factor1 = $matches[1];
-                    $draw_section_operation = $matches[2];
-                    $draw_section_factor2 = $matches[3];
-                }
-
-                $last_fetch = $start_id;
-                $parser->read_loglines($start_id, $end_id);
-                $parser->gather_logdata();
-                for($id=$start_id; $id <= $end_id; $id++) {
-                    if($id >= $last_fetch + PARSER_MAX_FETCH) {
-                        $last_fetch +=PARSER_MAX_FETCH;
-                        unset($parser->loglines);
-                        unset($parser->logdata);
-                        $parser->read_loglines($id, $id+PARSER_MAX_FETCH);
-                        $parser->gather_logdata();
-                    }
-                    $conditions_complied=1;
-                    foreach($conditions as $lvalue => $rvalue) {
-                        if($parser->logdata[$id][$lvalue]!=$rvalue) {
-                            $conditions_complied=0;
-                            break;
-                        }
-                    }
-                    switch($draw_section_operation) {
-                        case "+": $line_value[$id] = $parser->logdata[$id][$draw_section_factor1] + $parser->logdata[$id][$draw_section_factor2]; break;
-                        case "-": $line_value[$id] = $parser->logdata[$id][$draw_section_factor1] - $parser->logdata[$id][$draw_section_factor2]; break;
-                        case "*": $line_value[$id] = $parser->logdata[$id][$draw_section_factor1] * $parser->logdata[$id][$draw_section_factor2]; break;
-                        case "/": $line_value[$id] = $parser->logdata[$id][$draw_section_factor1] / $parser->logdata[$id][$draw_section_factor2]; break;
-                        default:  $line_value[$id] = $parser->logdata[$id][$draw_section];
-                    }
-                    if($line_value>0 && $conditions_complied) {
-                        if($s2overall) {
-                            $y_position_1 = ($dim_y - $y_offset - $sum * $y_faktor);
-                            $sum += $line_value[$id];
-                            $y_position_2 = ($dim_y - $y_offset - $sum * $y_faktor);
-                        } else {
-                            $y_position_1 = ($dim_y - $y_offset - $line_value[$id-$last_offset] * $y_faktor);
-                            $y_position_2 = ($dim_y - $y_offset - $line_value[$id] * $y_faktor);
-                        }
-                        imageline($image,
-                            $x_offset + (($t-$last_offset)*$x_faktor)+$x_faktor,  $y_position_1,
-                            $x_offset + ($t*$x_faktor)+$x_faktor,                 $y_position_2,
-                            $color[$draw_section]);
-                        imagestring($image, 1,
-                            $x_offset + ($t*$x_faktor)+$x_faktor - 2,             $y_position_2 -4,
-                            'o', $color[$draw_section]);
-                        $last_offset=1;
-                    } else {
-                        $last_offset++;
-                    }
-                    $t++;
-                }
-                if($draw_section != $section) {
-                    imagestringup($image, 1, $dim_x + ($s2*9), $dim_y-($y_offset+16), $draw_section, $color[$draw_section]);
-                    $s2++;
-                }
-            }
-
-            // events
-            $t=0;
-            $last_fetch = $start_id;
-            $parser->read_loglines($start_id, $end_id);
-            $parser->gather_logdata();
-            for($id=$start_id; $id <= $end_id; $id++) {
-                if($id >= $last_fetch + PARSER_MAX_FETCH) {
-                    $last_fetch +=PARSER_MAX_FETCH;
-                    unset($parser->loglines);
-                    unset($parser->logdata);
-                    $parser->read_loglines($id, $id+PARSER_MAX_FETCH);
-                    $parser->gather_logdata();
-                }
-                switch($parser->logdata[$id]['effect_id']) {
-                    case DEATH:
-                        if($parser->logdata[$id]['target_name'] == $char) {
-                            // char dead
-                            // x
-                            imagestring($image, 3, $x_offset + ($t*$x_faktor) - 2+$x_faktor, ($dim_y - $y_offset - $parser->logdata[$id][$section] * $y_faktor), 'X', $color['red']);
-                            // dashed line
-                            imagedashedline($image, $x_offset + ($t*$x_faktor)+$x_faktor, ($dim_y - $y_offset - $parser->logdata[$id][$section] * $y_faktor) ,
-                                                    $x_offset + ($t*$x_faktor)+$x_faktor, ($dim_y - $y_offset), $color['red']);
-                            if($eventtext==1) {
-                                // char name
-                                $x_position = $x_offset + ($t*$x_faktor) + 2+$x_faktor;
-                                if($x_position > $dim_x - 40) {
-                                    $x_position -= 40;
-                                }
-                                imagestring($image, 1, $x_position, ($dim_y - $y_offset - 13), $parser->logdata[$id]['target_name'], $color['red']);
-                            }
-                        } elseif($parser->logdata[$id]['source_name'] == $char) {
-                            // npc dead
-                            // x
-                            imagestring($image, 3, $x_offset + ($t*$x_faktor) - 2 +$x_faktor, ($dim_y - $y_offset - $parser->logdata[$id][$section] * $y_faktor - 9), 'x', $color['black']);
-                            // dashed line
-                            imagedashedline($image, $x_offset + ($t*$x_faktor)+$x_faktor, ($dim_y - $y_offset - $parser->logdata[$id][$section] * $y_faktor) ,
-                                                    $x_offset + ($t*$x_faktor)+$x_faktor, ($dim_y - $y_offset), $color['black']);
-                            if($eventtext==1) {
-                                // npc name
-                                $x_position = $x_offset + ($t*$x_faktor) + 2+$x_faktor;
-                                if($x_position > $dim_x - 40) {
-                                    $x_position -= 40;
-                                }
-                                imagestring($image, 1, $x_position, ($dim_y - $y_offset - 13), $parser->logdata[$id]['target_name'], $color['black']);
-                            }
-                        }
-                }
-                $t++;
-            }
-        } else {
-            $image = imagecreatetruecolor ($dim_x+$x_offset, 20);
-            $color['white']               = imagecolorallocate($image, 255, 255, 255);
-            $color['black']               = imagecolorallocate($image, 0,     0,   0);
-            imagefilledrectangle($image, 0, 0, $dim_x+$x_offset, 20, $color['white']);
-            imagestring($image, 3, 1, 1, 'keine Daten für '.$section, $color['black']);
-        }
-        imagepng($image, $cache_filename);
-        imagedestroy($image);
-        readfile($cache_filename);
-    }
 
     function seconds_to_readable($seconds) {
         $time = $seconds;

@@ -50,8 +50,8 @@
             
             $duration = $end_timestamp - $start_timestamp;
             if($overall['count']>0) {
-                
-                
+                $overall['overheal'] = 0;
+
                 foreach($used_abilities as $ability_name => $ability) {
                     // experimental! 
                     // see crudedragos comments on http://mmo-mechanics.com/swtor/forums/Thread-Batalyser-SWTOR-Combat-Analyser
@@ -82,6 +82,14 @@
                                 // healer, dd
                                 $threatcoefficient = 0.50;
                             }
+                            break;
+                        // Healing Resonance
+                        case "2785827457335296":
+                        case "2882455631560704":
+                        case "2772083561988096":
+                        case "2785805982498816":
+                            $threatcoefficient = 0.50;
+                            break;
                         default:
                             switch($parser->logchar2userchar[$char]['class_id']) {
                                 case MERCENARY:
@@ -130,6 +138,7 @@
                     }
                     if($ability['threat']) {
                         $ability['overheal'] = $ability['heal'] - $ability['threat'] * pow($threatcoefficient, -1);
+                        $overall['overheal'] += $ability['overheal'];
                     }
                     if($ability['heal']>0) {
                         $data .= "<tr>
@@ -152,8 +161,6 @@
                     }
                 }
                 
-                $overall['overheal'] = $overall['heal'] - $overall['threat'] * pow($threatcoefficient, -1);
-            
                 $html = "<div style='border-top: 1px solid silver'>Gesamt:<table>
                     <tr>
                         <td rowspan='2' valign='top'>

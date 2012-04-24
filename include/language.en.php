@@ -16,6 +16,11 @@
         'female'                    => 'Female',
         'republic'                  => 'Republic',
         'empire'                    => 'Empire',
+        'save'                      => 'Save',
+        'edit'                      => 'Edit',
+        'delete'                    => 'Delete',
+        'uploaddate'                => 'Uploaddate',
+        'none'                      => 'none',
         
         // class properties
         'name'                      => 'Name',
@@ -33,6 +38,7 @@
         'damagedone'                => 'Damage done',                           // accordiontitle
         'healdone'                  => 'Hitpoints healed',                      // accordiontitle
         'threatdone'                => 'Threat generated',                      // accordiontitle
+        'healreceived'              => 'Heal received',                         // accordiontitle
         'damagestatsfor'            => 'Damagestatistics for',                  // accordiontitle
         'shown'                     => 'shown',
         'hidden'                    => 'hidden',
@@ -77,11 +83,11 @@
         'thankyou'                  => 'Thank you!',                            // options dialog
         
         'yourchars'                 => 'Your Chars',
-        'createnewchar'             => 'Create new Char',
+        'createnewchar'             => 'Create new or edit character',
 
         // message dialogs
-        'dialog_upload'             => '<p>Upload is beeing startet. After that, your combatlog will be parsed for the first time. This kann take a couple of minutes, please be patient.</p>
-                    <p>Right after the parser is ready, this dialog will be closed and your log will be displayed with your current settings.</p>',
+        'dialog_upload'             => '<p>Upload is beeing started. After that, your combatlog will be parsed for the first time. This may take a couple of minutes, please be patient.</p>
+                    <p>Right after the parser is done, this dialog will be closed and your log will be displayed with your current settings.</p>',
         'dialog_upload_title'       => 'Upload startet',
         'dialog_error_title'        => 'Oops, an Error!',
         'dialog_message_title'      => 'A Message for You',
@@ -152,6 +158,19 @@
         'effect'                    => 'Effect',
         'damagetype'                => 'Damagetype',
         'enlarge_grafic'            => 'Enlarge Grafic',
-        'effective'                 => 'effective'
+        'effective'                 => 'effective',
+        
+        // dialog charassign
+        'assignyourchars'           => 'Assign your chars to this log',
+        'assignyourchars_note'      => 'Assign your chars to the chars in the currently loaded log here', 
+        'createchars_note'          => 'You may create your chars in the Options dialog.',
+        'noneofyourcharsfound'      => 'None of your chars where found in the currently loaded log.',
+        'saveassignment'            => 'Save Assignment',
+        'assignedchars'             => 'Assigned Chars',
+        
+        // dialog errormessage
+        'close'                     => 'Close',
+        
+        'guildiespubliclogs'        => 'Public Logs of your Guildmates'
     );
 ?>

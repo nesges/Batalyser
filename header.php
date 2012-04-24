@@ -10,12 +10,14 @@
         <link type="text/css" href="css/custom-theme/jquery-ui-1.8.18.custom.css" rel="stylesheet">
         <link type="text/css" href="css/ColReorder.css" rel="stylesheet">
         <link type="text/css" href="css/ColumnFilterWidgets.css" rel="stylesheet">
+        <link type="text/css" href="css/jquery.qtip.min.css" rel="stylesheet">
 
         <script type="text/javascript" src="js/jquery-1.7.1.min.js"></script>
         <script type="text/javascript" src="js/jquery-ui-1.8.18.custom.min.js"></script>
         <script type="text/javascript" src="js/jquery.dataTables.js"></script>
         <script type="text/javascript" src="js/ColReorderWithResize.js"></script>
         <script type="text/javascript" src="js/ColumnFilterWidgets.js"></script>
+        <script type="text/javascript" src="js/jquery.qtip.min.js"></script>
         
         <style type="text/css">
             html, body {
@@ -28,6 +30,13 @@
             }
             * {
                 font: 12px "Trebuchet MS", sans-serif;
+            }
+            big {
+                font-size: 14px;
+                font-weight: bolder;
+            }
+            b {
+                font-weight: bolder;
             }
             #logo {
                 background-image:url(/images/batalyser.png);

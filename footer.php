@@ -177,20 +177,6 @@
                     }
                 });
                 $( "#min_fight_duration_slider_value" ).val( $( "#min_fight_duration_slider" ).slider( "value" ) );
-                $( "#dialog_options" ).dialog({
-                    <?
-                        if(! $_SESSION['min_fight_duration'] || !$_SESSION['log_id'] || $openOptions==1) {
-                            print "autoOpen: true,\n";
-                            print "modal: true,\n";
-                        } else {
-                            print "autoOpen: false,\n";
-                            print "modal: false,\n";
-                        }
-                    ?>
-                    title: '<? print guil('dialog_options_title')?>',
-                    width: 800,
-                    position: 'top'
-                });
                 $( ".button_open_dialog_misc" ).click(function() {
                     $( "#dialog_misc" ).dialog( "open" );
                     return false;
@@ -200,35 +186,9 @@
                     width: 800,
                     position: 'top'
                 });
-                $( "#dialog_help" ).dialog({
-                    autoOpen: false,
-                    title: '<? print guil('dialog_help_title')?>',
-                    width: 800,
-                    position: 'top'
-                });
-                $( "#button_open_dialog_options" ).click(function() {
-                    $( "#dialog_options" ).dialog( "open" );
-                    return false;
-                });
-                $( "#button_open_dialog_help" ).click(function() {
-                    $( "#dialog_help" ).dialog( "open" );
-                    return false;
-                });
                 $( "#button_start_upload" ).click(function() {
                     $( "#dialog_upload" ).dialog( "open" );
                     return false;
-                });
-                $( "#dialog_login" ).dialog({
-                    title: '<? print guil('dialog_login_title')?>',
-                    modal: true
-                });
-                $( "#dialog_error" ).dialog({
-                    title: '<? print guil('dialog_error_title')?>',
-                    modal: true
-                });
-                $( "#dialog_message" ).dialog({
-                    title: '<? print guil('dialog_message_title')?>',
-                    modal: true
                 });
                 $( "#dialog_upload" ).dialog({
                     title: '<? print $guil[$_SESSION['language']]['dialog_upload_title']?>',
@@ -238,13 +198,36 @@
                 $('.dialog').dialog();
                 <?
                     foreach($dialogs as $dialog) {
-                        print $dialog->jsskeleton();
-                        if($dialog->name == $_GET['opendialog']) {
-                            print $dialog->jsopen();
+                        if(! $dialog->important) {
+                            print $dialog->jsskeleton();
+                            if($dialog->name == $_GET['opendialog']) {
+                                print $dialog->jsopen();
+                            }
+                            switch($dialog->name) {
+                                case 'options':
+                                case 'help':
+                                    print $dialog->jssskeleton_button();
+                            }
+                        }
+                    }
+                    foreach($dialogs as $dialog) {
+                        if($dialog->important) {
+                            print $dialog->jsskeleton();
                         }
                     }
                 ?>
-            } );
+                $('a[title]').qtip({
+                    position: {
+                        my: 'bottom right',
+                        at: 'top left',
+                        target: 'mouse',
+                        viewport: $("body")
+                    },
+                    style: {
+		                classes: 'ui-tooltip-light ui-tooltip-shadow ui-tooltip-rounded'
+	                }
+                }); 
+            } );    
         </script>
     </body>
 </html>

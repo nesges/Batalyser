@@ -18,7 +18,6 @@
         exit();
     }
     ob_start();
-    
 
     include("include/class.tab.php");
     include("include/class.tab_dpshpstps_per_target.php");
@@ -34,7 +33,7 @@
 
     $parser = new Parser($filename, $log_id);
     
-    if($fightnr) {
+    if(isset($fightnr) && $fightnr != '') {
         $fight = $parser->players[$char]['fights'][$fightnr];
         $parser->read_loglines($fight['start_id'], $fight['end_id']);
         
@@ -43,7 +42,7 @@
         $end_id = $fight['end_id'];
         $end_timestamp = $fight['end_timestamp'];
         
-        $tabname_prefix = 'fight'.$fight_nr.'-';
+        $tabname_prefix = 'fight'.$fightnr.'-';
     } else {
         $parser->read_loglines();
         
@@ -55,6 +54,8 @@
         $tabname_prefix = 'sum-';
     }
     $parser->gather_logdata();
+    
+    $_char = preg_replace('/[^a-zA-Z0-9_-]/', '', $char);
 
     $tabs = array();
     $tabs[] = new Tab_DpsHpsTps_per_Target(
@@ -84,9 +85,9 @@
             $start_id,
             $end_id,
             'dataTable_ajaxLoaded',
-            ($fight_nr?0:1)
+            ($fightnr?0:1)
         );
-    if($fightnr) {
+    if(isset($fightnr) && $fightnr != '') {
         $tabs[] = new Tab_Full_Fight_Stats(
                 $tabname_prefix.$_char.'-fullfight-stats',
                 $char,
@@ -124,7 +125,7 @@
     // there seem to be serverload-issues preventing tabs to collect data
     // this is a simple workarround to at least reinitialise such broken tabs
     // iow: try again (3 times)
-    if($tabs_printed < 4) {
+    if($tabs_printed == 0) {
         if($reload < 3) {
             sleep(3);
             header("Location: ".$_SERVER['PHP_SELF'].'?'.$_SERVER['QUERY_STRING'].'&reload='.($reload+1));

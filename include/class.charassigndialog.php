@@ -3,7 +3,7 @@
         function CharassignDialog() {
             global $userchars;
             
-            parent::Dialog('charassign', 'Deine Chars diesem Log zuordnen', '', 1);
+            parent::Dialog('charassign', guil('assignyourchars'), '', 1);
             $parser = new Parser();
 
             $userchars_in_parser = 0;
@@ -17,7 +17,7 @@
             }
 
             if($userchars_in_parser) {
-                $html = '<p>Ordne hier die im aktuell geladenen Logfile vorkommenden Chars deinen eigenen Chars zu. Du kannst deine Chars im Optionen-Dialog anlegen.</p>
+                $html = '<p>'.guil('assignyourchars_note').' '.guil('createchars_note').'</p>
                     <form action="" method="POST">
                         <table>';
                 foreach(array_keys($parser->players) as $logchar) {
@@ -27,10 +27,10 @@
                 }
                 $html .= '</table>
                         <input type="hidden" name="op" value="charassign">
-                        <center><input type="submit" value="Zuordnung speichern"></center>
+                        <center><input type="submit" value="'.guil('saveassignment').'"></center>
                     </form>';
             } else {
-                $html = '<p>Keiner deiner Chars wurde im aktuell geladenen Logfile gefunden. Du kannst deine Chars im Optionen-Dialog anlegen.</p>';
+                $html = '<p>'.guil('noneofyourcharsfound').' '.guil('createchars_note').'</p>';
             }
             $this->content = $html;
         }

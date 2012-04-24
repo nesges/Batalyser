@@ -124,6 +124,22 @@
                 if(!$logfile_handle) {
                     die("couldn't open logfile ".$this->logfile);
                 }
+                
+                // BW did cut of the datepart in the latest update on pts 
+                // try to determine it from filename
+                if(preg_match('/combat_(\d\d\d\d-\d\d-\d\d)/', $uploaded_logfile, $matches_filename)) {
+                    $datepart = $matches_filename[1];
+                } else {
+                    // try loading it from logfile; only works on reparsed logs
+                    $res = sql_query("select unix_timestamp(timestamp) from logfile where id='".$this->log_id."'");
+                    list($database_timestamp) = sql_fetch_row($res);
+                    if($database_timestamp) {
+                        $datepart = date('Y-m-d', $database_timestamp);
+                    } else {
+                        // set current date
+                        $datepart = date('Y-m-d');
+                    }
+                }
 
                 while(($line = fgets($logfile_handle)) !== false) {
                     $line_no++;
@@ -287,8 +303,7 @@
                             if($month && $year && $day) {
                                 $timestamp = strtotime("$year-$month-$day $time");
                             } else {
-                                // BW did cut of the datepart in the latest update on pts 
-                                $timestamp = strtotime(date('Y-m-d')." $time");
+                                $timestamp = strtotime($datepart." $time");
                                 preg_match('/(\d\d):\d\d:\d\d/', $time, $time_matches);
                                 $current_hour   = $time_matches[1];
                                 if(isset($last_hour) && $current_hour < $last_hour) {
@@ -362,7 +377,11 @@
                                     $logdata['players'][$source_name]['fights'][$current_fight_id]['sum']['threat'] += $threat;
                                     $logdata['players'][$source_name]['fights'][$current_fight_id]['sum']['crit'] += $crit;
                                     if($target_name != $source_name) {
-                                        $logdata['players'][$source_name]['fights'][$current_fight_id]['target'][$target_id]++;
+                                        if($target_id) {
+                                            $logdata['players'][$source_name]['fights'][$current_fight_id]['target'][$target_id]++;
+                                        } else {
+                                            $logdata['players'][$source_name]['fights'][$current_fight_id]['target'][$target_name]++;
+                                        }
                                     }
                                 }
                                 

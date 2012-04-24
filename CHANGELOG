@@ -1,4 +1,25 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+v0.11
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* CharassignDialog translated to en
+* dialogs moved from report.php to classes of Dialog
+* fixed an error in report.php which caused mysql-error-messages for
+  every secondary-char in a log (downported)
+* datepart of logrow-timestamps is now determined by filename,
+  uploaddate or current time (in that order)
+* fixed a bug in ajax_accordion where logs with only 1 fight weren't
+  displayed correctly (downported)
+* qTip2 integration for fight-accordion tooltips
+* fight-accordion title: "fightnr: starttime | duration | maintarget"
+* if maintarget of a single fight is a player, it's name is shown in the
+  fights accordion now
+* linecharts without data now report "no data found"
+* fixed a possible sql-injection in report.php (downported)
+* fixed a bug in char creation, where every char followed the dark side
+* chars under "Your Chars" in options dialog are now editable/deletable
+* moved logfile-info from top to overlaydialog in the bottom right
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 v0.10
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 * graphs replaced by google visualization linecharts

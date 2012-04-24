@@ -16,7 +16,12 @@
         'female'                    => 'Weiblich',
         'republic'                  => 'Republik',
         'empire'                    => 'Imperium',
-        
+        'save'                      => 'Speichern',
+        'edit'                      => 'Bearbeiten',
+        'delete'                    => 'Löschen',
+        'uploaddate'                => 'Uploaddatum',
+        'none'                      => 'keine',
+                
         // class properties
         'name'                      => 'Name',
         'class'                     => 'Klasse',
@@ -33,6 +38,7 @@
         'damagedone'                => 'Schaden verursacht',                    // accordiontitle
         'healdone'                  => 'Punkte geheilt',                        // accordiontitle
         'threatdone'                => 'Bedrohung erzeugt',                     // accordiontitle
+        'healreceived'              => 'Heilung erhalten',                      // accordiontitle
         'damagestatsfor'            => 'Schadensstatistik für',                 // accordiontitle
         'shown'                     => 'angezeigt',
         'hidden'                    => 'versteckt',
@@ -77,7 +83,7 @@
         'thankyou'                  => 'Vielen Dank!',                          // options dialog
         
         'yourchars'                 => 'Deine Chars',
-        'createnewchar'             => 'Neuen Char anlegen',
+        'createnewchar'             => 'Neuen Char anlegen oder bearbeiten',
 
         // message dialogs
         'dialog_upload'             => '<p>Der Upload wird gestartet. Im Anschluss wird das Combatlog geparst. Das kann einige Minuten dauern, bitte hab ein wenig Geduld.</p>
@@ -152,6 +158,20 @@
         'effect'                    => 'Effekt',
         'damagetype'                => 'Schadensart',
         'enlarge_grafic'            => 'Grafik vergrößern',
-        'effective'                 => 'effektiv'
+        'effective'                 => 'effektiv',
+        
+        // dialog charassign
+        'assignyourchars'           => 'Deine Chars diesem Log zuordnen',
+        'assignyourchars_note'      => 'Ordne hier die im aktuell geladenen Logfile vorkommenden Chars deinen eigenen Chars zu.',
+        'createchars_note'          => 'Du kannst deine Chars im Optionen-Dialog anlegen.',
+        'noneofyourcharsfound'      => 'Keiner deiner Chars wurde im aktuell geladenen Logfile gefunden.',
+        'saveassignment'            => 'Zuordnung speichern',
+        'assignedchars'             => 'Zugeordnete Chars',
+        
+        // dialog errormessage
+        'close'                     => 'Schliessen',
+        
+        'guildiespubliclogs'        => 'Öffentliche Logs anderer Spieler deiner Gilde'
+        
     );
 ?>

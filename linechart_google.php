@@ -258,8 +258,6 @@
                         }
                     }
                     
-                    //print_r($php_data);
-                    
                     foreach($php_data as $row) {
                         if($index=='time') {
                             if(preg_match('/\[\d+,\d+,\d+,\d+\]/', $row[0])) {
@@ -273,6 +271,7 @@
                             $line[] = "[".join(',', $row)."]";
                         }
                     }
+                    $linecount = count($line);
                     if($line) {
                         print join(',', $line);
                     }
@@ -282,6 +281,9 @@
                     }
                 ?>
                 ]);
+                <?
+                    if($linecount > 0) {
+                ?>
                 view = new google.visualization.DataView(data);
                 view.hideColumns([2]);
                 
@@ -373,10 +375,16 @@
                     hidden[column] = 1;
                 }
                 dashboard.draw(view);
+                <?
+                    }  // if linecount > 0
+                ?>
             }
         </script>
     </head>
     <body>
+        <?
+            if($linecount > 0) {
+        ?>
         <div id='dashboard_div' style='background-color:white'>
             <button onClick='dashboard.draw(view)'>Resize</button>
             <?
@@ -405,6 +413,11 @@
             <div id='chart_div'></div>
             <div id='slider_div'></div>
         </div>
+        <?
+            } else {
+                print "no data found";
+            }
+        ?>
     </body>
 </html>
 <?
