@@ -1,7 +1,7 @@
 <?
     class Tab_Char_HpsTps_per_Ability extends Tab {
         
-        function Tab_Char_HpsTps_per_Ability($name, $char, $start_id, $end_id, $class='') {
+        function Tab_Char_HpsTps_per_Ability($name, $char, $start_id, $end_id, $class='', $hidexps=0) {
             global $parser;
             
             $data = '';
@@ -144,14 +144,18 @@
                         $data .= "<tr>
                                 <td>".$ability_name."</td>
                                 <td>".$ability['count']."</td>
-                                <td>".$ability['heal']."</td>
-                                <td>".round($ability['heal'] / $duration, 2)."</td>
-                                <td>".round($ability['heal'] / $ability['count'], 2)."</td>
+                                <td>".$ability['heal']."</td>";
+                        if(!$hidexps) {
+                            $data .= "<td>".round($ability['heal'] / $duration, 2)."</td>";
+                        }
+                        $data .= "<td>".round($ability['heal'] / $ability['count'], 2)."</td>
                                 <td>".round($ability['overheal'], 2)."</td>
                                 <td>".round((100/$ability['heal'])*$ability['overheal'], 2)."%</td>
-                                <td>".$ability['threat']."</td>
-                                <td>".round($ability['threat'] / $duration, 2)."</td>
-                                <td>".round($ability['threat'] / $ability['count'], 2)."</td>
+                                <td>".$ability['threat']."</td>";
+                        if(!$hidexps) {
+                            $data .= "<td>".round($ability['threat'] / $duration, 2)."</td>";
+                        }
+                        $data .= "<td>".round($ability['threat'] / $ability['count'], 2)."</td>
                                 <td>".round($ability['threat'] / $ability['heal'], 2)."</td>
                                 <td>".$ability['hit']."</td>
                                 <td>".$ability['crit']."</td>
@@ -167,10 +171,12 @@
                             <table>
                                 <tr><td>".guil('normal').":         </td><td>".$overall['hit']."</td>       <td>(".round(100/$overall['count']*$overall['hit'],     2)."%)</td></tr>
                                 <tr><td>".guil('crit').":           </td><td>".$overall['crit']."</td>      <td>(".round(100/$overall['count']*$overall['crit'],    2)."%)</td></tr>
-                                <tr><td>HPS:                        </td><td colspan='2'>".round($overall['heal']/$duration, 2)."</td></tr>
-                                <tr><td>Overheal:                   </td><td colspan='2'>".round($overall['overheal'], 2)." (".round(100/$overall['heal'] * $overall['overheal'], 2)."%)</td></tr>
-                                <tr><td>HPS (".guil('effective')."):</td><td colspan='2'>".round(($overall['heal']-$overall['overheal'])/$duration, 2)."</td></tr>
-                            </table>
+                                <tr><td>Overheal:                   </td><td colspan='2'>".round($overall['overheal'], 2)." (".round(100/$overall['heal'] * $overall['overheal'], 2)."%)</td></tr>";
+                if(!$hidexps) {
+                    $html .= "<tr><td>HPS:                        </td><td colspan='2'>".round($overall['heal']/$duration, 2)."</td></tr>
+                                <tr><td>HPS (".guil('effective')."):</td><td colspan='2'>".round(($overall['heal']-$overall['overheal'])/$duration, 2)."</td></tr>";
+                }
+                $html .= "</table>
                             (Overheal and effective HPS are experimental estimates)
                         </td>
                         <td valign='top'>";
@@ -199,11 +205,18 @@
                 </div>";
             }
 
+            if(!$hidexps) {
+                $headers = array(guil('ability'), 'Use', 'Heal', 'HPS', 'Heal/Use', 'Overheal', 'Overheal %', 'Threat', 'TPS', 'Threat/Use', 'Threat/Heal',
+                        'Hit', 'Crit', 'Hit %', 'Crit %');
+            } else {
+                $headers = array(guil('ability'), 'Use', 'Heal', 'Heal/Use', 'Overheal', 'Overheal %', 'Threat', 'Threat/Use', 'Threat/Heal',
+                        'Hit', 'Crit', 'Hit %', 'Crit %');
+            }
+
             parent::Tab(
                 $name, 
                 guil('healperability'), 
-                array(guil('ability'), 'Use', 'Heal', 'HPS', 'Heal/Use', 'Overheal', 'Overheal %', 'Threat', 'TPS', 'Threat/Use', 'Threat/Heal',
-                        'Hit', 'Crit', 'Hit %', 'Crit %'), 
+                $headers, 
                 $data,
                 $html,
                 $class

@@ -59,10 +59,10 @@
             include("include/class.PasswordHash.php");
             $t_hasher = new PasswordHash(8, TRUE);
 
-            $res = sql_query("select user_id, username, user_email, user_password
+            $res = $sql['main']->query("select user_id, username, user_email, user_password
                 from forum_users
                 where username = '$login_user'");
-            list($id, $name, $mail, $database_password) = sql_fetch_row($res);
+            list($id, $name, $mail, $database_password) = $sql['main']->fetch_row($res);
             if($check = $t_hasher->CheckPassword($login_pass, $database_password)) {
                 $_SESSION['user_id'] = $id;
                 $_SESSION['user_name'] = $name;
@@ -86,11 +86,11 @@
     // load userdata from db
     if($_SESSION['user_id']) {
         // load logfiles
-        $res = sql_query("select l.id, UNIX_TIMESTAMP(l.timestamp), l.notes, l.filename, l.uploader_id, l.public
+        $res = $sql['main']->query("select l.id, UNIX_TIMESTAMP(l.timestamp), l.notes, l.filename, l.uploader_id, l.public
             from logfile l
             where l.uploader_id = '".$_SESSION['user_id']."'
             order by l.timestamp desc");
-        while(list($id, $timestamp, $notes, $filename, $uploader_id, $public) = sql_fetch_row($res)) {
+        while(list($id, $timestamp, $notes, $filename, $uploader_id, $public) = $sql['main']->fetch_row($res)) {
             $logfiles[$id]['timestamp'] = $timestamp;
             $logfiles[$id]['notes'] = $notes;
             $logfiles[$id]['filename'] = $filename;
@@ -98,8 +98,8 @@
             $logfiles[$id]['public'] = $public;
             
             $c=0;
-            $res2 = sql_query("select charname, char_id from logfile_char where logfile_id='".$id."' and char_id>0");
-            while(list($charname, $char_id) = sql_fetch_row($res2)) {
+            $res2 = $sql['main']->query("select charname, char_id from logfile_char where logfile_id='".$id."' and char_id>0");
+            while(list($charname, $char_id) = $sql['main']->fetch_row($res2)) {
                 $logfiles[$id]['chars'][$c]['name'] = $charname;
                 $logfiles[$id]['chars'][$c]['id'] = $char_id;
                 $c++;
@@ -107,14 +107,14 @@
         }
         
         // load chars
-        $res = sql_query("select c.id, c.name, c.faction_id, c.level, c.gender, g.name, r.".$_SESSION['language'].", s.name, cl.".$_SESSION['language'].", c.class_id, c.server_id, c.race_id, c.guild_id
+        $res = $sql['main']->query("select c.id, c.name, c.faction_id, c.level, c.gender, g.name, r.".$_SESSION['language'].", s.name, cl.".$_SESSION['language'].", c.class_id, c.server_id, c.race_id, c.guild_id
             from `char` c
                 join guild g on (c.guild_id = g.id)
                 join race r on (c.race_id = r.id)
                 join server s on (c.server_id = s.id)
                 join class cl on (c.class_id = cl.class_id)
                 where user_id='".$_SESSION['user_id']."'");
-        while(list($char_id, $charname, $faction_id, $charlevel, $chargender, $guildname, $race, $server, $classname, $classid, $serverid, $raceid, $guildid) = sql_fetch_row($res)) {
+        while(list($char_id, $charname, $faction_id, $charlevel, $chargender, $guildname, $race, $server, $classname, $classid, $serverid, $raceid, $guildid) = $sql['main']->fetch_row($res)) {
             $userchars[$char_id]['name'] = $charname;
             $userchars[$char_id]['faction'] = $faction_id=='r'?guil('republic'):guil('empire');
             $userchars[$char_id]['level'] = $charlevel;
@@ -133,19 +133,20 @@
 
     // load logfile data (for public logfile)
     if($_SESSION['log_id']) {
-        $res = sql_query("select l.id, UNIX_TIMESTAMP(l.timestamp), l.notes, l.filename, l.uploader_id, l.public
+        $res = $sql['main']->query("select l.id, UNIX_TIMESTAMP(l.timestamp), l.notes, l.filename, l.uploader_id, l.public, l.datastore
             from logfile l
             where l.id = '".$_SESSION['log_id']."'");
-        while(list($id, $timestamp, $notes, $filename, $uploader_id, $public) = sql_fetch_row($res)) {
+        while(list($id, $timestamp, $notes, $filename, $uploader_id, $public, $datastore) = $sql['main']->fetch_row($res)) {
             $logfiles[$id]['timestamp'] = $timestamp;
             $logfiles[$id]['notes'] = $notes;
             $logfiles[$id]['filename'] = $filename;
             $logfiles[$id]['uploader_id'] = $uploader_id;
             $logfiles[$id]['public'] = $public;
+            $logfiles[$id]['datastore'] = $datastore;
             
             $c=0;
-            $res2 = sql_query("select charname, char_id from logfile_char where logfile_id='".$id."' and char_id>0");
-            while(list($charname, $char_id) = sql_fetch_row($res2)) {
+            $res2 = $sql['main']->query("select charname, char_id from logfile_char where logfile_id='".$id."' and char_id>0");
+            while(list($charname, $char_id) = $sql['main']->fetch_row($res2)) {
                 $logfiles[$id]['chars'][$c]['name'] = $charname;
                 $logfiles[$id]['chars'][$c]['id'] = $char_id;
                 $c++;
@@ -159,10 +160,9 @@
             if(!$demo) {
                 $log_id_list = mysql_escape_string(join(',', $_POST['delete_logfile']));
                 // check for user_id
-                $res = sql_query("select id, filename from logfile where id in (".$log_id_list.")
+                $res = $sql['main']->query("select id, filename, datastore from logfile where id in (".$log_id_list.")
                     and uploader_id = ".$_SESSION['user_id']);
-                while(list($id, $filename) = sql_fetch_row($res)) {
-                    $delete_ids[] = $id;
+                while(list($id, $filename, $datastore) = $sql['main']->fetch_row($res)) {
                     @unlink('cache/serialized_parser_'.$id.'_'.$version);
                     foreach(glob("cache/accordion_*".$id."_*") as $cache_file) {
                         @unlink($cache_file);
@@ -171,33 +171,32 @@
                         @unlink($cache_file);
                     }
                     @unlink($filename);
+                    
+                    $sql['main']->query("delete from logfile where id = '$id'");
+                    $sql['main']->query("delete from logfile_char where logfile_id = '$id'");
+                    $sql[$datastore]->query("delete from data where logfile_id='$id'");
                 }
-                $log_id_list = join(',', $delete_ids);
-                sql_query("delete from logfile
-                    where id in (".$log_id_list.")");
-                sql_query("delete from data
-                    where logfile_id in (".$log_id_list.")");
                 $_SESSION['log_id']=0;
             }
             header("Location: ".$_SERVER['PHP_SELF']."?logfile=&options=1");
             exit();
         case "logdownload":
-            $res = sql_query("select filename from logfile where id=".mysql_escape_string($_GET['logfile']));
-            list($filename) = sql_fetch_row($res);
+            $res = $sql['main']->query("select filename from logfile where id=".mysql_escape_string($_GET['logfile']));
+            list($filename) = $sql['main']->fetch_row($res);
             header("Expires: 0");
             header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
             header("Content-Type: application/force-download");
             header("Content-Description: File Transfer");
-            header("Content-Disposition: attachment; filename=".$filename);
+            header("Content-Disposition: attachment; filename=".preg_replace('#upload/\d+/#', '', $filename));
             header("Content-Transfer-Encoding: binary");
             readfile($filename);
             exit();
         case "logpublicize":
-            sql_query("update logfile set public=1 where id = '".mysql_escape_string($_GET['logfile'])."' and uploader_id='".$_SESSION['user_id']."'");
+            $sql['main']->query("update logfile set public=1 where id = '".mysql_escape_string($_GET['logfile'])."' and uploader_id='".$_SESSION['user_id']."'");
             header("Location: ".$_SERVER['PHP_SELF']."?op=noop&message=".guil('logpublicizedunder')." ".urlencode('http://'.$_SERVER['SERVER_NAME'].$_SERVER['PHP_SELF']."?op=setopt&logfile=".$_GET['logfile']));
             exit();
         case "logdepublicize":
-            sql_query("update logfile set public=0 where id = '".mysql_escape_string($_GET['logfile'])."' and uploader_id='".$_SESSION['user_id']."'");
+            $sql['main']->query("update logfile set public=0 where id = '".mysql_escape_string($_GET['logfile'])."' and uploader_id='".$_SESSION['user_id']."'");
             header("Location: ".$_SERVER['PHP_SELF']."?op=noop&message=".guil('logdepublicized'));
             exit();
         case "logupload":
@@ -206,13 +205,27 @@
                     @mkdir('upload/'.$_SESSION['user_id']);
                     $filename = 'upload/'.$_SESSION['user_id'].'/'.basename($_FILES['logfile']['name']);
                     if(move_uploaded_file($_FILES['logfile']['tmp_name'], $filename)) {
-                        sql_query("insert into logfile (uploader_id, filename, timestamp, public, mergeable)
-                            values (".$_SESSION[user_id].", '".$filename."', now(), ".($_POST['publicize']?1:0).", ".($_POST['mergeable']?1:0).")");
-                        $res = sql_query("select max(id) from logfile where uploader_id = ".$_SESSION[user_id]);
-                        list($logfile_id) = sql_fetch_row($res);
+                        // choose smallest datastore
+                        $datastore = '';
+                        $minsize = -1;
+                        foreach(array_keys($sql) as $datastore_name) {
+                            switch($datastore_name) {
+                                case 'main': break;
+                                default: 
+                                    $sql[$datastore_name]->conn();
+                                    if($minsize < 0 || $sql[$datastore_name]->size < $minsize)  {
+                                        $minsize = $sql[$datastore_name]->size;
+                                        $datastore = $datastore_name;
+                                    }
+                            }
+                        }
+                        $sql['main']->query("insert into logfile (uploader_id, filename, timestamp, public, mergeable, datastore)
+                            values (".$_SESSION[user_id].", '".$filename."', now(), ".($_POST['publicize']?1:0).", ".($_POST['mergeable']?1:0).", '".$datastore."')");
+                        $res = $sql['main']->query("select max(id) from logfile where uploader_id = ".$_SESSION[user_id]);
+                        list($logfile_id) = $sql['main']->fetch_row($res);
                         $_SESSION['log_id'] = $logfile_id;
 
-                        $parser = new Parser($filename, $logfile_id);
+                        $parser = new Parser($logfile_id);
                         $parser->read_loglines();
                         $parser->gather_logdata();
                         if(count($parser->players) > 3) {
@@ -221,19 +234,19 @@
                             $playerlist = join(', ', array_keys($parser->players));
                         }
                         if(! $parser->fight_count) {
-                            sql_query("delete from logfile where id=".$logfile_id);
+                            $sql['main']->query("delete from logfile where id=".$logfile_id);
 
                             $errormessage = guil('logfilecontainsnodata');
                         } else {
                             $notes = '['.date("d.m. H:i", $parser->start_timestamp).'-'.date("H:i", $parser->end_timestamp).'] '.$playerlist.': '.$parser->fight_count.' Kämpfe, '.(count($parser->actors)-1).' Gegner';
-                            sql_query("update logfile set notes='".$notes."' where id='".$logfile_id."'");
+                            $sql['main']->query("update logfile set notes='".$notes."' where id='".$logfile_id."'");
 
                             // insert new effects, abilities etc.
                             if($parser->language) {
                                 if($parser->players) {
                                     foreach(array_keys($parser->players) as $charname) {
                                         if($charname) {
-                                            sql_query("insert into logfile_char (logfile_id, charname) values ('".$logfile_id."', '".mysql_escape_string($charname)."')
+                                            $sql['main']->query("insert into logfile_char (logfile_id, charname) values ('".$logfile_id."', '".mysql_escape_string($charname)."')
                                                 on duplicate key update char_id=0");
                                         }
                                     }
@@ -242,7 +255,7 @@
                                     foreach($parser->abilities as $key => $value) {
                                         if($key && $value) {
                                             $__value = mysql_escape_string($value);
-                                            sql_query("insert into ability (id, ".$parser->language.") values (".$key.", '".$__value."')
+                                            $sql['main']->query("insert into ability (id, ".$parser->language.") values (".$key.", '".$__value."')
                                                 ON DUPLICATE KEY UPDATE $parser->language='".$__value."'");
                                         }
                                     }
@@ -252,7 +265,7 @@
                                     foreach($parser->actors as $key => $value) {
                                         if($key && $value) {
                                             $__value = mysql_escape_string($value);
-                                            sql_query("insert into actor (id, ".$parser->language.") values (".$key.", '".$__value."')
+                                            $sql['main']->query("insert into actor (id, ".$parser->language.") values (".$key.", '".$__value."')
                                                 ON DUPLICATE KEY UPDATE $parser->language='".$__value."'");
                                         }
                                     }
@@ -262,7 +275,7 @@
                                     foreach($parser->effects as $key => $value) {
                                         if($key && $value) {
                                             $__value = mysql_escape_string($value);
-                                            sql_query("insert into effect (id, ".$parser->language.") values (".$key.", '".$__value."')
+                                            $sql['main']->query("insert into effect (id, ".$parser->language.") values (".$key.", '".$__value."')
                                                 ON DUPLICATE KEY UPDATE $parser->language='".$__value."'");
                                         }
                                     }
@@ -272,7 +285,7 @@
                                     foreach($parser->effect_types as $key => $value) {
                                         if($key && $value) {
                                             $__value = mysql_escape_string($value);
-                                            sql_query("insert into effect_type (id, ".$parser->language.") values (".$key.", '".$__value."')
+                                            $sql['main']->query("insert into effect_type (id, ".$parser->language.") values (".$key.", '".$__value."')
                                                 ON DUPLICATE KEY UPDATE $parser->language='".$__value."'");
                                         }
                                     }
@@ -282,7 +295,7 @@
                                     foreach($parser->hit_types as $key => $value) {
                                         if($key && $value) {
                                             $__value = mysql_escape_string($value);
-                                            sql_query("insert into hit_type (id, ".$parser->language.") values (".$key.", '".$__value."')
+                                            $sql['main']->query("insert into hit_type (id, ".$parser->language.") values (".$key.", '".$__value."')
                                                 ON DUPLICATE KEY UPDATE $parser->language='".$__value."'");
                                         }
                                     }
@@ -302,21 +315,21 @@
             break;
         case "createchar":
             if($_SESSION['user_id'] && !$demo) {
-                $res = sql_query("select id from server where id='".$_POST['server']."'");
-                list($server_id_found) = sql_fetch_row($res);
+                $res = $sql['main']->query("select id from server where id='".$_POST['server']."'");
+                list($server_id_found) = $sql['main']->fetch_row($res);
                 if($server_id_found) {
-                    $res = sql_query("select id from guild where name like '".$_POST['guild']."' and server_id='".$_POST['server']."'");
-                    list($guild_id) = sql_fetch_row($res);
+                    $res = $sql['main']->query("select id from guild where name like '".$_POST['guild']."' and server_id='".$_POST['server']."'");
+                    list($guild_id) = $sql['main']->fetch_row($res);
                     if(!$guild_id) {
-                        sql_query("insert into guild (name, server_id) values ('".$_POST['guild']."', '".$_POST['server']."')");
-                        $res = sql_query("select id from guild where name like '".$_POST['guild']."' and server_id='".$_POST['server']."'");
-                        list($guild_id) = sql_fetch_row($res);
+                        $sql['main']->query("insert into guild (name, server_id) values ('".$_POST['guild']."', '".$_POST['server']."')");
+                        $res = $sql['main']->query("select id from guild where name like '".$_POST['guild']."' and server_id='".$_POST['server']."'");
+                        list($guild_id) = $sql['main']->fetch_row($res);
                     }
                     if($guild_id) {
-                        $res = sql_query("select faction_id, ".$_SESSION['language']." from class where class_id='".$_POST['charclass']."'");
-                        list($faction_id, $classname) = sql_fetch_row($res);
+                        $res = $sql['main']->query("select faction_id, ".$_SESSION['language']." from class where class_id='".$_POST['charclass']."'");
+                        list($faction_id, $classname) = $sql['main']->fetch_row($res);
                         if($faction_id) {
-                            if(sql_query("insert into `char` (name, user_id, server_id, guild_id, faction_id, class_id, level, gender, race_id)
+                            if($sql['main']->query("insert into `char` (name, user_id, server_id, guild_id, faction_id, class_id, level, gender, race_id)
                                 values ('".$_POST['charname']."', '".$_SESSION['user_id']."', '".$_POST['server']."', '".$guild_id."', 
                                     '".$faction_id."', '".$_POST['charclass']."', '".$_POST['charlevel']."', '".$_POST['chargender']."', '".$_POST['charrace']."')
                                     on duplicate key update 
@@ -350,10 +363,11 @@
             break;
         case "deletechar":
             if($_SESSION['user_id'] && !$demo) {
-                $res = sql_query("select user_id from `char` where id='".$_GET['charid']."'");
-                list($chars_user_id) = sql_fetch_row($res);
+                $res = $sql['main']->query("select user_id from `char` where id='".$_GET['charid']."'");
+                list($chars_user_id) = $sql['main']->fetch_row($res);
                 if($chars_user_id == $_SESSION['user_id']) {
-                    if(sql_query("delete from `char` where id='".$_GET['charid']."'")) {
+                    if($sql['main']->query("delete from `char` where id='".$_GET['charid']."'")) {
+                        $sql['main']->query("update logfile_char set char_id=0 where char_id='".$_GET['charid']."'");
                         header("Location: ".$_SERVER['PHP_SELF'].'?op=noop&message=Character wurde gelöscht');
                         exit();
                     } else {
@@ -369,10 +383,10 @@
 
                 $subject = $_POST['subject'].' ('.preg_replace('#/?batalyser/?#', '', dirname($_SERVER['REQUEST_URI'])).' v'.$version.')';
 
-                sql_query("insert into bugreport (subject, message, user_id, logfile_id)
+                $sql['main']->query("insert into bugreport (subject, message, user_id, logfile_id)
                     values ('".$subject."', '".mysql_escape_string($_POST['bugreport'])."', '".$_SESSION['user_id']."', '".$_SESSION['log_id']."')");
-                $res = sql_query("select max(id) from bugreport where user_id='".$_SESSION['user_id']."'");
-                list($bugreport_id) = sql_fetch_row($res);
+                $res = $sql['main']->query("select max(id) from bugreport where user_id='".$_SESSION['user_id']."'");
+                list($bugreport_id) = $sql['main']->fetch_row($res);
 
                 ob_start();
                 print "\n\n\nSESSION: ";
@@ -426,6 +440,17 @@
         case "piechart":
             header("Location: piechart.php?".$_SERVER['QUERY_STRING']);
             exit();
+        case "charassign":
+            foreach($_POST['selectchar'] as $logchar => $userchar_id) {
+                if($userchar_id<0) {
+                    $userchar_id=0;
+                }
+                $sql['main']->query("insert into logfile_char
+                    values (".$_SESSION['log_id'].", '".mysql_escape_string($logchar)."', '".$userchar_id."')
+                        on duplicate key update char_id='".$userchar_id."'");
+            }
+            header("Location: ".$_SERVER['PHP_SELF']);
+            exit;
     }
 
     ob_start();
@@ -469,6 +494,94 @@
     }
 
     // let's go
+    
+    // loginfo
+    if($_SESSION['log_id']) {
+        $html = "<div>";
+        if($admin) {
+            $html .= "<p>Datastore: ".$logfiles[$_SESSION['log_id']]['datastore']."</p>";
+            $html .= "<p>LogfileID: ".$_SESSION['log_id']."</p>";
+        }
+        if($logfiles[$_SESSION['log_id']]['public']) {
+            $html .= "<p><a style='color:red' href='?op=setopt&logfile=".$_SESSION['log_id']."'>".guil('publicurl')."</a></p>";
+        }
+        $html .= "<p>
+                <b>".guil('logfile').":</b> ".$logfiles[$_SESSION['log_id']]['notes']."<br>
+                <b>".guil('filename').":</b> ".preg_replace('#upload/\d+/#', '', $logfiles[$_SESSION['log_id']]['filename'])."<br>
+                <b>".guil('uploaddate').":</b> ".date('Y-m-d H:i:s', $logfiles[$_SESSION['log_id']]['timestamp'])."<br>
+                <b>".guil('assignedchars').":</b> ";
+        if($logfiles[$_SESSION['log_id']]['chars']) {
+            $logchars = array();
+            foreach($logfiles[$_SESSION['log_id']]['chars'] as $logchar) {
+                $logchars[] = $logchar['name'];
+            }
+            if(count($logchars)>0) {
+                $html .= join(', ', $logchars);
+            } else {
+                $html .= "<i>".guil('none')."</i>";
+            }
+        } else {
+            $html .= "<i>".guil('none')."</i>";
+        }
+        $html .= "</p>
+            <p><big>".guil('options').":</big><br>
+                <b>".guil('minfightduration').":</b> ".$_SESSION['min_fight_duration']."<br>
+                <b>".guil('preferedlanguage').":</b> ".$languages[$_SESSION['language']]."
+            </p>
+        </div>";
+        
+        // all public logs of your guildmembers
+        $guildmemberslog = array();
+        if($userchars) {
+            foreach($userchars as $userchar_id => $userchar) {
+                $userguildids[] = $userchar['guild_id'];
+            }
+
+            $res = $sql['main']->query("SELECT unix_timestamp(l.timestamp), l.notes, l.id, c.name, c.guild_id, g.name
+                FROM `char` c, logfile_char lc, logfile l, guild g
+                    where c.guild_id in (".join(',',$userguildids).")
+                        and c.id = lc.char_id
+                        and l.id = lc.logfile_id
+                        and g.id = c.guild_id
+                        and public=1
+                        and c.id not in (".join(',', array_keys($userchars)).")
+                    order by timestamp desc");
+            while(list($guildmemberslog_timestamp, $guildmemberslog_notes, $guildmemberslog_id, $guildmemberslog_charname, $guildmemberslog_guild_id, $guildmemberslog_guildname) = $sql['main']->fetch_row($res)) {
+                $guildmemberslog[$guildmemberslog_id]['timestamp'] = $guildmemberslog_timestamp;
+                $guildmemberslog[$guildmemberslog_id]['notes'] = $guildmemberslog_notes;
+                $guildmemberslog[$guildmemberslog_id]['charname'] = $guildmemberslog_charname;
+                $guildmemberslog[$guildmemberslog_id]['guild_id'] = $guildmemberslog_guild_id;
+                $guildmemberslog[$guildmemberslog_id]['guildname'] = $guildmemberslog_guildname;
+            }
+        }
+        
+        if(count($guildmemberslog) > 0) {
+            $html .= "
+            <big>".guil('guildiespubliclogs').":</big>
+            <table class='dataTableSimple'>
+                <thead>
+                    <tr>
+                        <th>".guil('uploaddate')."</th>
+                        <th>Character</th>
+                    </tr>
+                </thead>
+                <tbody>";
+        
+            foreach($guildmemberslog as $gmlog_id => $gmlog) {
+                $html .= "<tr>
+                        <td>".date('Y-m-d H:i:s', $gmlog['timestamp'])."</td>
+                        <td><a title='<big>".htmlentities($gmlog['guildname'])."</big><br>".htmlentities($gmlog['notes'])."' href='?op=setopt&logfile=".$gmlog_id."'>".$gmlog['charname']."</a></td>
+                    </tr>";
+            }
+            $html .= "</tbody></table>";
+        }
+        
+        $dialog = new Dialog('loginfo', 'Loginfo', $html, 0, 1);
+        $dialog->position = "['right', 'bottom']";
+        $dialog->width = 400;
+        $dialogs[] = $dialog;
+        unset($html);
+    }
 
     print "<div id='navbar' style='float:left'>
             <button onClick='document.location.href=\"/forum\"'>".guil('forum')."</button>";
@@ -506,7 +619,7 @@
     // we are able to gather logdata now
 
     if(!isset($parser)) {
-        $parser = new Parser($logfiles[$_SESSION['log_id']]['filename'], $_SESSION['log_id']);
+        $parser = new Parser($_SESSION['log_id']);
     }
 
     if(count($parser->players)<1) {
@@ -514,91 +627,6 @@
         exit();
     }
     
-    // loginfo
-    if($_SESSION['log_id']) {
-        $html = "<div>";
-        if($logfiles[$_SESSION['log_id']]['public']) {
-            $html .= " <p><a style='color:red' href='?op=setopt&logfile=".$_SESSION['log_id']."'>".guil('publicurl')."</a></p>";
-        }
-        $html .= "<p>
-                <b>".guil('logfile').":</b> ".$logfiles[$_SESSION['log_id']]['notes']."<br>
-                <b>".guil('filename').":</b> ".preg_replace('#upload/\d+/#', '', $logfiles[$_SESSION['log_id']]['filename'])."<br>
-                <b>".guil('uploaddate').":</b> ".date('Y-m-d H:i:s', $logfiles[$_SESSION['log_id']]['timestamp'])."<br>
-                <b>".guil('assignedchars').":</b> ";
-        if($logfiles[$_SESSION['log_id']]['chars']) {
-            $logchars = array();
-            foreach($logfiles[$_SESSION['log_id']]['chars'] as $logchar) {
-                $logchars[] = $logchar['name'];
-            }
-            if(count($logchars)>0) {
-                $html .= join(', ', $logchars);
-            } else {
-                $html .= "<i>".guil('none')."</i>";
-            }
-        } else {
-            $html .= "<i>".guil('none')."</i>";
-        }
-        $html .= "</p>
-            <p><big>".guil('options').":</big><br>
-                <b>".guil('minfightduration').":</b> ".$_SESSION['min_fight_duration']."<br>
-                <b>".guil('preferedlanguage').":</b> ".$languages[$_SESSION['language']]."
-            </p>
-        </div>";
-
-        $guildmemberslog = array();
-        if($userchars) {
-            foreach($userchars as $userchar_id => $userchar) {
-                $userguildids[] = $userchar['guild_id'];
-            }
-
-            $res = sql_query("SELECT unix_timestamp(l.timestamp), l.notes, l.id, c.name, c.guild_id, g.name
-                FROM `char` c, logfile_char lc, logfile l, guild g
-                    where c.guild_id in (".join(',',$userguildids).")
-                        and c.id = lc.char_id
-                        and l.id = lc.logfile_id
-                        and g.id = c.guild_id
-                        and public=1
-                        and c.id not in (".join(',', array_keys($userchars)).")
-                    order by timestamp desc");
-            while(list($guildmemberslog_timestamp, $guildmemberslog_notes, $guildmemberslog_id, $guildmemberslog_charname, $guildmemberslog_guild_id, $guildmemberslog_guildname) = sql_fetch_row($res)) {
-                $guildmemberslog[$guildmemberslog_id]['timestamp'] = $guildmemberslog_timestamp;
-                $guildmemberslog[$guildmemberslog_id]['notes'] = $guildmemberslog_notes;
-                $guildmemberslog[$guildmemberslog_id]['charname'] = $guildmemberslog_charname;
-                $guildmemberslog[$guildmemberslog_id]['guild_id'] = $guildmemberslog_guild_id;
-                $guildmemberslog[$guildmemberslog_id]['guildname'] = $guildmemberslog_guildname;
-            }
-        }
-        
-        if(count($guildmemberslog) > 0) {
-            $html .= "
-            <big>".guil('guildiespubliclogs').":</big>
-            <table class='dataTableSimple'>
-                <thead>
-                    <tr>
-                        <th>".guil('uploaddate')."</th>
-                        <th>Character</th>
-                    </tr>
-                </thead>
-                <tbody>";
-        
-            foreach($guildmemberslog as $gmlog_id => $gmlog) {
-                $html .= "<tr>
-                        <td>".date('Y-m-d H:i:s', $gmlog['timestamp'])."</td>
-                        <td><a title='<big>".htmlentities($gmlog['guildname'])."</big><br>".htmlentities($gmlog['notes'])."' href='?op=setopt&logfile=".$gmlog_id."'>".$gmlog['charname']."</a></td>
-                    </tr>";
-            }
-            $html .= "</tbody></table>";
-        }
-        
-        $dialog = new Dialog('loginfo', 'Loginfo', $html, 0, 1);
-        $dialog->nobutton = 1;
-        $dialog->position = "['right', 'bottom']";
-        $dialog->width = 400;
-        $dialogs[] = $dialog;
-        print $dialog->htmlskeleton();
-        
-        unset($html);
-    }
     unset($res);
 
     print "<div class='accordion'>";
@@ -618,6 +646,7 @@
         $summary_damage   = 0;
         $summary_threat   = 0;
         $summary_healed   = 0;
+        $summary_healrec  = 0;
 
         $fight_tab_links = '';
 
@@ -639,6 +668,7 @@
                 $summary_damage += $fight['sum']['damage'];
                 $summary_threat += $fight['sum']['threat'];
                 $summary_healed += $fight['sum']['healed'];
+                $summary_healrec += $fight['sum']['heal_received'];
 
                 if($single_fight_duration >= $_SESSION['min_fight_duration'] 
                         && $fight['sum']['damage'] + $fight['sum']['threat'] + $fight['sum']['healed'] > 0) {
@@ -664,8 +694,8 @@
                         }
                         if($main_target_id) {
                             if(is_numeric($main_target_id)) {
-                                $res = sql_query("select coalesce(".$_SESSION['language'].", de) from actor where id=".$main_target_id);
-                                list($main_target_name) = sql_fetch_row($res);
+                                $res = $sql['main']->query("select coalesce(".$_SESSION['language'].", de) from actor where id=".$main_target_id);
+                                list($main_target_name) = $sql['main']->fetch_row($res);
                             } else {
                                 $main_target_name = $main_target_id;
                             }
@@ -712,31 +742,42 @@
             print guil('tip_toolowminfightduration'); "Tipp: Wenn keine einzelnen Kämpfe angezeigt werden, dann prüfe ob du in den Optionen eine zu hohe Mindest-Kampfdauer gewählt hast.";
         }
 
-        $summary_title  = guil('logsummary').": ";
-        $summary_title .= guil('duration')." ".seconds_to_readable($summary_duration)." (".guil('active')."), ";
+
+        $summary_title  = guil('logsummary')
+            .": ".date('H:i:s', $min_timestamp)." - ".date('H:i:s', $max_timestamp)
+            ." | ".seconds_to_readable($summary_duration);
+        $summary_title .= " [".round($summary_damage / $summary_duration, 2)." DPS ";  
+        $summary_title .= "| ".round($summary_threat / $summary_duration, 2)." TPS ";  
+        $summary_title .= "| ".round($summary_healed / $summary_duration, 2)." HPS ] ";
+                   
+        $summary_tooltip= '<big>'.guil('logsummary').'</big>'
+            .'<br>'.guil('duration').': '.seconds_to_readable($summary_duration)." (".guil('active').")"
+            .'<br>'.guil('at')." ".date('d.m.', $min_timestamp)." ".guil('from')." ".date('H:i:s', $min_timestamp)." ".guil('to')." ".date('H:i:s', $max_timestamp)
+            .'<br>';
         if($summary_duration) {
-            $summary_title .= guil('at')." ".date('d.m.', $min_timestamp)." ".guil('between')." ".date('H:i:s', $min_timestamp)." ".guil('and')." ".date('H:i:s', $max_timestamp);
-            $summary_title .= " [".round($summary_damage / $summary_duration, 2)." DPS ";
-            $summary_title .= "| ".round($summary_threat / $summary_duration, 2)." TPS ";
-            $summary_title .= "| ".round($summary_healed / $summary_duration, 2)." HPS ] ";
             if($summary_damage>0) {
-                $summary_title .= $summary_damage." ".guil('damagedone').", ";
+                $summary_tooltip .= "<br>".$summary_damage." ".guil('damagedone')." (".round($summary_damage / $summary_duration, 2)." DPS)";
             }
             if($summary_healed>0) {
-                $summary_title .= $summary_healed." ".guil('healdone').", ";
+                $summary_tooltip .= "<br>".$summary_healed." ".guil('healdone')." (".round($summary_healed / $summary_duration, 2)." HPS)";
             }
-            $summary_title .= $summary_threat." ".guil('threatdone').".";
+            if($summary_threat>0) {
+                $summary_tooltip .= "<br>".$summary_threat." ".guil('threatdone')." (".round($summary_threat / $summary_duration, 2)." TPS)";
+            }
+            if($summary_healrec>0) {
+                $summary_tooltip .= "<br>".$summary_healrec." ".guil('healreceived')." (".round($summary_healrec / $summary_duration, 2)." HPS)";
+            }
         }
-        print "<h3><a href='ajax_accordion.php?char=".$char."&log_id=".$_SESSION['log_id']."'>".$summary_title."</a></h3><div><img src='../../images/loading.gif' alt='Loading...'> Loading...</div>";
+
+        print "<h3><a title='".htmlentities($summary_tooltip, ENT_QUOTES)."' href='ajax_accordion.php?char=".$char."&log_id=".$_SESSION['log_id']."'>".$summary_title."</a></h3><div><img src='../../images/loading.gif' alt='Loading...'> Loading...</div>";
 
         print "</div>"; // empty div that fixes accordion width bug
         print "</div>"; // accordion
     } // foreach $char
     print "</div>"; // accordion
     
-    sql_logout();
+    $sql['main']->logout();
     unset($guil);
-    unset($output_accordion_page);
     unset($parser);
 
     include("footer.php");

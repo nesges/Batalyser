@@ -71,9 +71,6 @@
             
             if(count($enemies) > 0) {
                 $html = "<p>".guil('tankstats_note1');
-                if($start_id == $parser->start_id && $end_id == $parser->end_id) {
-                    $html .= "<br>".guil('tankstats_note2');
-                }
                 $html .= "</p>
                     <div class='accordion'>";
                 $_html = '';

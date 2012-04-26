@@ -1,5 +1,5 @@
 <?
-    define("PARSER_MAX_FETCH", 5000);
+    define("PARSER_MAX_FETCH", 6000);
     
     class Parser {
         var $logfile;
@@ -12,19 +12,19 @@
         var $end_timestamp;
         var $fight_count;
         var $players;
-        var $loglines; // is actually a temp global var, which doesn't need to be serialized
+        var $loglines; // is actually a temp global var, which is not serialized
         var $logdata;
         var $infight;
+        var $datastore;
         
         // may be created without params to unserialize a parser identified by $_SESSION['log_id']
-        function Parser($logfile='', $log_id='') {
-            global $version;
+        function Parser($log_id='') {
+            global $version, $sql;
             
             if(!$log_id) {
                 $log_id = $_SESSION['log_id'];
-                $res = sql_query("select filename from logfile where id=".$log_id);
-                list($logfile) = sql_fetch_row($res);
             }
+
             $this->cache_parser_filename = 'cache/serialized_parser_'.$log_id.'_'.$version;
             if(file_exists($this->cache_parser_filename)) {
                 $unserialized = unserialize(file_get_contents($this->cache_parser_filename));
@@ -40,50 +40,57 @@
                 $this->fight_count     = $unserialized->fight_count;
                 $this->players         = $unserialized->players;
                 $this->logdata         = $unserialized->logdata;
+                $this->datastore       = $unserialized->datastore;
                 
                 unset($unserialized);
             } else {
-                if(preg_match('#^upload/\d+/[^/]+#', $logfile)) {
-                    $this->logfile = $logfile;
-                    if(!file_exists($this->logfile)) {
-                        $this->logfile = '../live/'.$logfile; // load live logs in dev version
+                $res = $sql['main']->query("select filename, datastore from logfile where id=".$log_id);
+                list($this->logfile, $this->datastore) = $sql['main']->fetch_row($res);
+
+                if($this->logfile) {
+                    if(preg_match('#^upload/\d+/[^/]+#', $this->logfile)) {
+                        if(!file_exists($this->logfile)) {
+                            $this->logfile = '../live/'.$this->logfile; // load live logs in dev version
+                        }
+                    } else {
+                        die("101");
                     }
-                } else {
-                    die("101");
+                    if(!file_exists($this->logfile)) {
+                        $this->logfile = 'upload/'.basename($this->logfile); // for older version logs; remove this code in a future version
+                    }
+                    if(!file_exists($this->logfile)) {
+                        die('Logfile not found');
+                    }
+                    $this->log_id = $log_id;
+                    $this->line_count = 0;
+                    $this->language = "";
+                    $this->start_timestamp = "";
+                    $this->end_timestamp = "";
+                    $this->fight_count = 0;
+                    $this->players = array();
+                    
+                    $this->actors = array();
+                    $this->abilities = array();
+                    $this->effects = array();
+                    $this->effect_types = array();
+                    $this->hit_types = array();
+                    
+                    $this->populate();
+                    $this->serialize_self();
                 }
-                if(!file_exists($this->logfile)) {
-                    $this->logfile = 'upload/'.basename($logfile); // for older version logs; remove this code in a future version
-                }
-                if(!file_exists($this->logfile)) {
-                    die('Logfile not found');
-                }
-                $this->log_id = $log_id;
-                $this->line_count = 0;
-                $this->language = "";
-                $this->start_timestamp = "";
-                $this->end_timestamp = "";
-                $this->fight_count = 0;
-                $this->players = array();
-                
-                $this->actors = array();
-                $this->abilities = array();
-                $this->effects = array();
-                $this->effect_types = array();
-                $this->hit_types = array();
-                
-                $this->populate();
-                $this->serialize_self();
             }
             
-            $res = sql_query("select lc.charname, lc.char_id, c.name, c.class_id
-                from logfile_char lc
-                    join `char` c on (lc.char_id = c.id)
-                where lc.logfile_id=".$this->log_id);
-            while(list($logchar, $userchar_id, $userchar_name, $userchar_class_id) = sql_fetch_row($res)) {
-                $this->logchar2userchar[$logchar]['id'] = $userchar_id;
-                $this->logchar2userchar[$logchar]['char_id'] = $userchar_id;
-                $this->logchar2userchar[$logchar]['name'] = $userchar_name;
-                $this->logchar2userchar[$logchar]['class_id'] = $userchar_class_id;
+            if($this->log_id) {
+                $res = $sql['main']->query("select lc.charname, lc.char_id, c.name, c.class_id
+                    from logfile_char lc
+                        join `char` c on (lc.char_id = c.id)
+                    where lc.logfile_id=".$this->log_id);
+                while(list($logchar, $userchar_id, $userchar_name, $userchar_class_id) = $sql['main']->fetch_row($res)) {
+                    $this->logchar2userchar[$logchar]['id'] = $userchar_id;
+                    $this->logchar2userchar[$logchar]['char_id'] = $userchar_id;
+                    $this->logchar2userchar[$logchar]['name'] = $userchar_name;
+                    $this->logchar2userchar[$logchar]['class_id'] = $userchar_class_id;
+                }
             }
         }
         
@@ -95,6 +102,8 @@
         }
         
         function populate() {
+            global $sql;
+            
             $read_from_file = array($this->logfile);
             $archive_dir = '';
             $this->infight=0;
@@ -117,7 +126,7 @@
             }
             
             $line_no = -1;
-            sql_query("delete from data where logfile_id=".$this->log_id);
+            $sql[$this->datastore]->query("delete from data where logfile_id=".$this->log_id);
             
             foreach($read_from_file as $uploaded_logfile) {
                 $logfile_handle = fopen($uploaded_logfile, "r");
@@ -131,8 +140,8 @@
                     $datepart = $matches_filename[1];
                 } else {
                     // try loading it from logfile; only works on reparsed logs
-                    $res = sql_query("select unix_timestamp(timestamp) from logfile where id='".$this->log_id."'");
-                    list($database_timestamp) = sql_fetch_row($res);
+                    $res = $sql['main']->query("select unix_timestamp(timestamp) from logfile where id='".$this->log_id."'");
+                    list($database_timestamp) = $sql['main']->fetch_row($res);
                     if($database_timestamp) {
                         $datepart = date('Y-m-d', $database_timestamp);
                     } else {
@@ -404,16 +413,32 @@
                             $values_sql = '';
                             foreach($row as $key => $value) {
                                 $column_sql .= $key.', ';
-                                if($key == 'timestamp') {
-                                    $values_sql .= "from_unixtime(".mysql_escape_string($value)."), ";
-                                } else {
-                                    $values_sql .= "'".mysql_escape_string($value)."', ";
+                                switch($key) {
+                                    case 'timestamp':
+                                        $values_sql .= "from_unixtime(".mysql_escape_string($value)."), ";
+                                        break;
+                                    case 'target_name':
+                                        if($row['target_id']) {
+                                            $values_sql .= "null, ";
+                                        } else {
+                                            $values_sql .= "'".mysql_escape_string($value)."', ";
+                                        }
+                                        break;
+                                    case 'source_name':
+                                        if($row['source_id']) {
+                                            $values_sql .= "null, ";
+                                        } else {
+                                            $values_sql .= "'".mysql_escape_string($value)."', ";
+                                        }
+                                        break;
+                                    default:
+                                        $values_sql .= "'".mysql_escape_string($value)."', ";
                                 }
                                 
                             }
                             $column_sql = preg_replace('/, $/', '', $column_sql);
                             $values_sql = preg_replace('/, $/', '', $values_sql);
-                            sql_query("insert into data (".$column_sql.") values (".$values_sql.")");
+                            $sql[$this->datastore]->query("insert into data (".$column_sql.") values (".$values_sql.")");
                         }
                         
                         if($this->infight == -1) {
@@ -447,6 +472,8 @@
         }
         
         function read_loglines($start_line='', $end_line='') {
+            global $sql;
+            
             if(! $start_line) {
                 $start_line = $this->start_id;
             }
@@ -463,30 +490,23 @@
                 $language = 'de';
             }
             
-            $res = sql_query("select
+            $res = $sql[$this->datastore]->query("select
                 d.line_no, unix_timestamp(d.timestamp),
-                d.source_id, d.source_type, coalesce(nullif(s.".$language.", ''), nullif(s.de, ''), nullif(s.en, ''), d.source_name),
-                d.target_id, d.target_type, coalesce(nullif(t.".$language.", ''), nullif(t.de, ''), nullif(t.en, ''), d.target_name),
+                d.source_id, d.source_type, d.source_name,
+                d.target_id, d.target_type, d.target_name,
                 d.hitpoints, 
-                d.hit_type_id, coalesce(nullif(h.".$language.", ''), nullif(h.de, ''), nullif(h.en, '')), 
+                d.hit_type_id, 
                 d.crit, d.threat,
-                d.ability_id, coalesce(nullif(a.".$language.", ''), nullif(a.de, ''), nullif(a.en, '')),
-                d.effect_id, coalesce(nullif(e.".$language.", ''), nullif(e.de, ''), nullif(e.en, '')),
-                d.effect_type_id, coalesce(nullif(et.".$language.", ''), nullif(et.de, ''), nullif(et.en, ''))
+                d.ability_id, 
+                d.effect_id, 
+                d.effect_type_id
                 from data d
-                    left join ability a on (a.id = d.ability_id)
-                    left join effect e on (e.id = d.effect_id)
-                    left join effect_type et on (et.id = d.effect_type_id)
-                    left join actor s on (s.id = d.source_id)
-                    left join actor t on (t.id = d.target_id)
-                    left join hit_type h on (h.id = d.hit_type_id)
-                where d.line_no between ".$start_line." and ".$end_line."
-                    and d.logfile_id = ".$this->log_id."
+                where d.line_no between '".$start_line."' and '".$end_line."'
+                    and d.logfile_id = '".$this->log_id."'
                 order by d.id asc");
 
              while(list($line_no, $timestamp, $source_id, $source_type, $source_name, $target_id, $target_type, $target_name, 
-                    $hitpoints, $hit_type_id, $hit_type_name, $crit, $threat, $ability_id, $ability_name, $effect_id, $effect_name, 
-                    $effect_type_id, $effect_type_name) = sql_fetch_row($res)) {
+                    $hitpoints, $hit_type_id, $crit, $threat, $ability_id, $effect_id, $effect_type_id) = $sql[$this->datastore]->fetch_row($res)) {
                 $this->loglines[$line_no]['timestamp']        = $timestamp;
                 $this->loglines[$line_no]['source_id']        = $source_id;
                 $this->loglines[$line_no]['source_type']      = $source_type;
@@ -496,20 +516,16 @@
                 $this->loglines[$line_no]['target_name']      = $target_name;
                 $this->loglines[$line_no]['hitpoints']        = $hitpoints;
                 $this->loglines[$line_no]['hit_type_id']      = $hit_type_id;
-                $this->loglines[$line_no]['hit_type_name']    = $hit_type_name;
                 $this->loglines[$line_no]['crit']             = $crit;
                 $this->loglines[$line_no]['threat']           = $threat;
                 $this->loglines[$line_no]['ability_id']       = $ability_id;
-                $this->loglines[$line_no]['ability_name']     = $ability_name;
                 $this->loglines[$line_no]['effect_id']        = $effect_id;
-                $this->loglines[$line_no]['effect_name']      = $effect_name;
                 $this->loglines[$line_no]['effect_type_id']   = $effect_type_id;
-                $this->loglines[$line_no]['effect_type_name'] = $effect_type_name;
             }
         }                     
                               
         function gather_logdata($start_id='', $end_id='') {
-            global $logfiles; 
+            global $logfiles, $sql; 
                               
             if($start_id=='') {
                 $start_id = $this->start_id;
@@ -517,6 +533,13 @@
             if($end_id=='') {
                 $end_id = $this->end_id;
             }
+            
+            $actors = array();
+            $hittypes = array();
+            $effects = array();
+            $effecttypes = array();
+            $abilities = array();
+            
         
             for($id=$start_id; $id<=$end_id; $id++) {
                 $logline = $this->loglines[$id];
@@ -529,87 +552,177 @@
                     $target_type        = $logline['target_type'];
                     $target_name        = $logline['target_name'];
                     $hitpoints          = $logline['hitpoints'];
-                    $damage_type        = $logline['hit_type_name'];
                     $crit               = $logline['crit'];
                     $threat             = $logline['threat'];
                     $ability_id         = $logline['ability_id'];
-                    $ability_name       = $logline['ability_name'];
                     $effect_id          = $logline['effect_id'];
-                    $effect_name        = $logline['effect_name'];
                     $effect_type_id     = $logline['effect_type_id'];
-                    $effect_type_name   = $logline['effect_type_name'];
-                    
-                    $hit_type_name      = $logline['hit_type_name'];
                     $hit_type_id        = $logline['hit_type_id'];
                     
                     $logdata[$id]['timestamp'] = $timestamp;
                     $logdata[$id]['source_id'] = $source_id;
                     $logdata[$id]['source_type'] = $source_type;
-                    $logdata[$id]['source_name'] = $source_name;
+                    if(!$source_id) {
+                        $logdata[$id]['source_name'] = $source_name;
+                    }
                     $logdata[$id]['target_id'] = $target_id;
                     $logdata[$id]['target_type'] = $target_type;
-                    $logdata[$id]['target_name'] = $target_name;
+                    if(! $target_id) {
+                        $logdata[$id]['target_name'] = $target_name;
+                    }
                     $logdata[$id]['hitpoints'] = $hitpoints;
-                    $logdata[$id]['damage_type'] = $damage_type;
                     $logdata[$id]['hit_type_id'] = $hit_type_id;
-                    $logdata[$id]['hit_type_name'] = $hit_type_name;
                     $logdata[$id]['crit'] = $crit;
                     $logdata[$id]['threat'] = $threat;
                     $logdata[$id]['ability_id'] = $ability_id;
-                    $logdata[$id]['ability_name'] = $ability_name;
                     $logdata[$id]['effect_id'] = $effect_id;
-                    $logdata[$id]['effect_name'] = $effect_name;
                     $logdata[$id]['effect_type_id'] = $effect_type_id;
-                    $logdata[$id]['effect_type_name'] = $effect_type_name;
+                    
+                    $actors[$source_id]=0;
+                    $actors[$target_id]=0;
+                    $hittypes[$hit_type_id]=0;
+                    $abilities[$ability_id]=0;
+                    $effects[$effect_id]=0;
+                    $effecttypes[$effect_type_id]=0;
+                    
+                    switch($effect_type_id) {
+                        case SPEND:     $effecttype_pre = 'spend_'; break;
+                        case RESTORE:   $effecttype_pre = 'restore_'; break;
+                        default:        $effecttype_pre = ''; break;
+                    }
                     
                     switch($effect_id) {
+                        case FORCE:
+                            $logdata[$id][$effecttype_pre.'force'] = $hitpoints; break;
+                        case HITPOINT:
+                            $logdata[$id][$effecttype_pre.'hitpoint'] = $hitpoints; break;
+                        case ENERGY:
+                            $logdata[$id][$effecttype_pre.'energy'] = $hitpoints; break;
+                        case RAGE:
+                            $logdata[$id][$effecttype_pre.'rage'] = $hitpoints; break;
+                        case AMMO:
+                            $logdata[$id][$effecttype_pre.'ammo'] = $hitpoints; break;
+                        case FOCUS:
+                            $logdata[$id][$effecttype_pre.'focus'] = $hitpoints; break;
+                        case HEAT:
+                            $logdata[$id][$effecttype_pre.'heat'] = $hitpoints; break;
                         case DAMAGE:
                             $logdata[$id]['damage'] = $hitpoints;
                             $logdata['base']['damage'] += $hitpoints;
+                            
+                            // count hit, crit, miss...
+                            switch($hit_type_id) {
+                                case MISS:
+                                    $hitorshit = 'miss';
+                                    break;
+                                case DODGE:
+                                    $hitorshit = 'dodge';
+                                    break;
+                                case IMMUNE:
+                                    $hitorshit = 'immune';
+                                    break;
+                                case PARRY:
+                                    $hitorshit = 'parry';
+                                    break;
+                                case DEFLECT:
+                                    $hitorshit = 'deflect';
+                                    break;
+                                //case RESIST:
+                                //    $hitorshit = 'resist';
+                                //    break;
+                                default:
+                                    // if damage_type doesn't start with "-" and it's no crit, it's a normal hit
+                                    if(!preg_match('/^-/', $damage_type)) {
+                                        if(!$crit) {
+                                            $hitorshit = 'hit';
+                                        }
+                                    } else {
+                                        // new damage_type detected
+                                        // implement some notification here
+                                    }
+                                    break;
+                            }
+                            $logdata[$id][$hitorshit]++;
                             break;
                         case HEAL:
+                            if(!$crit) {
+                                $logdata[$id]['hit']++;
+                            }
                             $logdata[$id]['heal'] = $hitpoints;
                             $logdata['base']['heal'] += $hitpoints;
                             break;
                     }
-                    
-                    // count hit, crit, miss...
-                    // damage_type has no id in the logs: translate de, fr.. to en
-                    $hitorshit = "";
-                    switch($hit_type_id) {
-                        case MISS:
-                            $hitorshit = 'miss';
-                            break;
-                        case DODGE:
-                            $hitorshit = 'dodge';
-                            break;
-                        case IMMUNE:
-                            $hitorshit = 'immune';
-                            break;
-                        case PARRY:
-                            $hitorshit = 'parry';
-                            break;
-                        case DEFLECT:
-                            $hitorshit = 'deflect';
-                            break;
-                        //case RESIST:
-                        //    $hitorshit = 'resist';
-                        //    break;
-                        default:
-                            // if damage_type doesn't start with "-" and it's no crit, it's a normal hit
-                            if(!preg_match('/^-/', $damage_type)) {
-                                if(!$crit) {
-                                    $hitorshit = 'hit';
-                                }
-                            } else {
-                                // new damage_type detected
-                                // implement some notification here
-                            }
-                            break;
-                    }
-                    $logdata[$id][$hitorshit]++;
                 }
             }
+            
+            // translation
+            if($_SESSION['language']) {
+                $translateto = $_SESSION['language'].',';
+            } else {
+                $translateto = '';
+            }
+            if($actors) {
+                $res = $sql['main']->query("select id, coalesce(".$translateto." de, en, fr, other) from actor where id in (".join(',', array_keys($actors)).")");
+                while(list($actor_id, $actor_name) = $sql['main']->fetch_row($res)) {
+                    $actors[$actor_id] = $actor_name;
+                }
+            }
+            if($abilities) {
+                $res = $sql['main']->query("select id, coalesce(".$translateto." de, en, fr, other) from ability where id in (".join(',', array_keys($abilities)).")");
+                while(list($id, $name) = $sql['main']->fetch_row($res)) {
+                    $abilities[$id] = $name;
+                }
+            }
+            if($effects) {
+                $res = $sql['main']->query("select id, coalesce(".$translateto." de, en, fr, other) from effect where id in (".join(',', array_keys($effects)).")");
+                while(list($id, $name) = $sql['main']->fetch_row($res)) {
+                    $effects[$id] = $name;
+                }
+            }
+            if($effecttypes) {
+                $res = $sql['main']->query("select id, coalesce(".$translateto." de, en, fr, other) from effect_type where id in (".join(',', array_keys($effecttypes)).")");
+                while(list($id, $name) = $sql['main']->fetch_row($res)) {
+                    $effecttypes[$id] = $name;
+                }
+            }
+            if($hittypes) {
+                $res = $sql['main']->query("select id, coalesce(".$translateto." de, en, fr, other) from hit_type where id in (".join(',', array_keys($hittypes)).")");
+                while(list($id, $name) = $sql['main']->fetch_row($res)) {
+                    $hittypes[$id] = $name;
+                }
+            }
+            
+            for($l=$start_id; $l<$end_id; $l++) {
+                if($actors[$logdata[$l]['source_id']]) {
+                    $logdata[$l]['source_name']     = $actors[$logdata[$l]['source_id']];
+                }
+                if($actors[$logdata[$l]['target_id']]) {
+                    $logdata[$l]['target_name']     = $actors[$logdata[$l]['target_id']];
+                }
+                if($abilities[$logdata[$l]['ability_id']]) {
+                    $logdata[$l]['ability_name']    = $abilities[$logdata[$l]['ability_id']];
+                } else {
+                    unset($logdata[$l]['ability_name']);
+                }
+                if($effects[$logdata[$l]['effect_id']]) {
+                    $logdata[$l]['effect_name']     = $effects[$logdata[$l]['effect_id']];
+                } else {
+                    unset($logdata[$l]['effect_name']);
+                }
+                if($effecttypes[$logdata[$l]['effect_type_id']]) {
+                    $logdata[$l]['effect_type_name']= $effecttypes[$logdata[$l]['effect_type_id']];
+                } else {
+                    unset($logdata[$l]['effect_type_name']);
+                }
+                if($hittypes[$logdata[$l]['hit_type_id']]) {
+                    $logdata[$l]['hit_type_name']   = $hittypes[$logdata[$l]['hit_type_id']];
+                    $logdata[$l]['damage_type']     = $hittypes[$logdata[$l]['hit_type_id']];
+                } else {
+                    unset($logdata[$l]['hit_type_name']);
+                    unset($logdata[$l]['damage_type']);
+                }
+            }
+            
             $this->logdata = $logdata;
         }
     }

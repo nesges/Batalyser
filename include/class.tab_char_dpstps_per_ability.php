@@ -1,7 +1,7 @@
 <?
     class Tab_Char_DpsTps_per_Ability extends Tab {
         
-        function Tab_Char_DpsTps_per_Ability($name, $char, $start_id, $end_id, $class='') {
+        function Tab_Char_DpsTps_per_Ability($name, $char, $start_id, $end_id, $class='', $hidexps=0) {
             global $parser;
 
             $data = '';
@@ -65,12 +65,16 @@
                         $data .= "<tr>
                                 <td>".$ability_name."</td>
                                 <td>".$ability['count']."</td>
-                                <td>".$ability['damage']."</td>
-                                <td>".round($ability['damage'] / $duration, 2)."</td>
-                                <td>".round($ability['damage'] / $ability['count'], 2)."</td>
-                                <td>".$ability['threat']."</td>
-                                <td>".round($ability['threat'] / $duration, 2)."</td>
-                                <td>".round($ability['threat'] / $ability['count'], 2)."</td>
+                                <td>".$ability['damage']."</td>";
+                        if(!$hidexps) {
+                            $data .= "<td>".round($ability['damage'] / $duration, 2)."</td>";
+                        }
+                        $data .= "<td>".round($ability['damage'] / $ability['count'], 2)."</td>
+                                <td>".$ability['threat']."</td>";
+                        if(!$hidexps) {
+                            $data .= "<td>".round($ability['threat'] / $duration, 2)."</td>";
+                        }
+                        $data .= "<td>".round($ability['threat'] / $ability['count'], 2)."</td>
                                 <td>".round($ability['threat'] / $ability['damage'], 2)."</td>
                                 <td>".($ability['hit']+$ability['crit'])."</td>
                                 <td>".$ability['hit']."</td>
@@ -135,12 +139,20 @@
                 </div>";
             }
             
+            if(!$hidexps) {
+                $headers = array(guil('ability'), 'Use', 'Damage', 'DPS', 'Damage/Use', 'Threat', 'TPS', 'Threat/Use', 'Threat/DMG',
+                        'Hit (alle)', 'Hit (noncrit)', 'Crit', 'Miss', 'Dodge', 'Parry', 'Deflect', 'Resist', 'Immune',
+                        'Hit (alle) %', 'Hit (noncrit) %', 'Crit %', 'Miss %', 'Dodge %', 'Parry %', 'Deflect %', 'Resist %', 'Immune %');
+            } else {
+                $headers = array(guil('ability'), 'Use', 'Damage', 'Damage/Use', 'Threat', 'Threat/Use', 'Threat/DMG',
+                        'Hit (alle)', 'Hit (noncrit)', 'Crit', 'Miss', 'Dodge', 'Parry', 'Deflect', 'Resist', 'Immune',
+                        'Hit (alle) %', 'Hit (noncrit) %', 'Crit %', 'Miss %', 'Dodge %', 'Parry %', 'Deflect %', 'Resist %', 'Immune %');
+            }
+            
             parent::Tab(
                 $name, 
                 guil('damageperability'), 
-                array(guil('ability'), 'Use', 'Damage', 'DPS', 'Damage/Use', 'Threat', 'TPS', 'Threat/Use', 'Threat/DMG',
-                        'Hit (alle)', 'Hit (noncrit)', 'Crit', 'Miss', 'Dodge', 'Parry', 'Deflect', 'Resist', 'Immune',
-                        'Hit (alle) %', 'Hit (noncrit) %', 'Crit %', 'Miss %', 'Dodge %', 'Parry %', 'Deflect %', 'Resist %', 'Immune %'), 
+                $headers, 
                 $data,
                 $html,
                 $class

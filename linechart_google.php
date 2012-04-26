@@ -9,15 +9,12 @@
     }
     ob_start();
     
-    $res = sql_query("select filename from logfile where id=".$_GET['log_id']);
-    list($filename) = sql_fetch_row($res);
-
     $index = $_GET['index'];
     if(!$index) {
         $index = 'time';
     }
 
-    $parser = new Parser($filename, $_GET['log_id']);
+    $parser = new Parser($_GET['log_id']);
     $parser->read_loglines($_GET['min_id'], $_GET['max_id']);
     $parser->gather_logdata();
 ?>
@@ -55,8 +52,7 @@
                 <?
                     $sectionlabel = array();
                     if($_GET['section'][0]=='allhealers') {
-                        $charttitle = 'All Healers (healing you)';
-                        unset($_GET['section'][0]);
+                        $charttitle = 'All Players healing you';
                         $s=0;
                         foreach(array_keys($parser->players) as $player) {
                             if($parser->players[$player]['fights'][$_GET['min_id']]['sum']['healed']>0) {
@@ -201,7 +197,7 @@
                         }
                     }
 
-                    if($index=='time') {
+                    if($index=='time' && count($php_data)>0) {
                         // merge all values to their timestamp
                         unset($first_id_with_data);
                         unset($end_id_with_data);
@@ -428,4 +424,15 @@
             fclose($cache_handle);
         }
     }
+?>
+<?
+    $memreal = memory_get_usage(true);
+                
+    $fh = fopen('benchmarks', 'a');
+    fwrite($fh, sprintf("% 10sB % 6sKB % 3sMB % 6s linechart_google.php\n", 
+        $memreal, 
+        round($memreal/1024,0), 
+        round($memreal/(1024*1024),0), 
+        $_SESSION['log_id']));
+    fclose($fh);
 ?>

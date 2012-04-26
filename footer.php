@@ -232,5 +232,15 @@
     </body>
 </html>
 <?
+    $memreal = memory_get_usage(true);
+                
+    $fh = fopen('benchmarks', 'a');
+    fwrite($fh, sprintf("% 10sB % 6sKB % 3sMB % 6s footer.php\n", 
+        $memreal, 
+        round($memreal/1024,0), 
+        round($memreal/(1024*1024),0), 
+        $_SESSION['log_id']));
+    fclose($fh);
+    
     exit();
 ?>

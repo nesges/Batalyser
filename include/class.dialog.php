@@ -24,8 +24,7 @@
         }
         
         function htmlskeleton() {
-            $html = "<div id='dialog_".$this->name."'>".$this->content."</div>";
-            return $html;
+            return "<div id='dialog_".$this->name."'>".$this->content."</div>";
         }
         
         function htmlskeleton_button() {

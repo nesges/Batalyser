@@ -1,4 +1,20 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+v0.12
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* logdownload filename is the original filename now
+* separated translation from dataloading in class parser
+* entities having ids have their name saved to table data no more (aka
+  only player names are stored)
+* implemented multiple datastores
+* fixed "allhealers" in linechart_google.php not responding (internal 
+  error) when noone healed your char
+* charassignment is now deleted when char is deleted
+* added tooltip to summary accordion
+* dialog charassign enhanced (automatch; shows current assignment)
+* Tab_Full_Fight_Stats now displays SPEND and RESTORE damage/healing
+* added spend/restored resourcepoints to Tab_Full_Fight_Stats
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 v0.11
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 * CharassignDialog translated to en

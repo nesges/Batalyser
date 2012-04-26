@@ -28,10 +28,7 @@
     include("include/class.tab_full_fight_graphs.php");
     
     // since this script is to be called from the main script, we always have a cached serialized parser
-    $res = sql_query("select filename from logfile where id=".$log_id);
-    list($filename) = sql_fetch_row($res);
-
-    $parser = new Parser($filename, $log_id);
+    $parser = new Parser($log_id);
     
     if(isset($fightnr) && $fightnr != '') {
         $fight = $parser->players[$char]['fights'][$fightnr];
@@ -58,26 +55,35 @@
     $_char = preg_replace('/[^a-zA-Z0-9_-]/', '', $char);
 
     $tabs = array();
+    if(isset($fightnr) && $fightnr != '') {
+        $hidexps = 0;
+    } else {
+        $hidexps = 1;
+    }
     $tabs[] = new Tab_DpsHpsTps_per_Target(
             $tabname_prefix.preg_replace('/\s/', '', $_char).'-damage',
             $char,
             $start_id,
             $end_id,
-            'dataTable_ajaxLoaded'
+            'dataTable_ajaxLoaded',
+            $hidexps
         );
+    
     $tabs[] = new Tab_Char_DpsTps_per_Ability(
             $tabname_prefix.preg_replace('/\s/', '', $_char).'-dmgthreatabilities',
             $char,
             $start_id,
             $end_id,
-            'dataTable_ajaxLoaded'
+            'dataTable_ajaxLoaded',
+            $hidexps
         );
     $tabs[] = new Tab_Char_HpsTps_per_Ability(
             $tabname_prefix.preg_replace('/\s/', '', $_char).'-healthreatabilities',
             $char,
             $start_id,
             $end_id,
-            'dataTable_ajaxLoaded'
+            'dataTable_ajaxLoaded',
+            $hidexps
         );
     $tabs[] = new Tab_Enemies_Damage_to_Char(
             $tabname_prefix.'enemies-vs-'.preg_replace('/\s/', '', $_char).'-sources',
@@ -105,16 +111,18 @@
     }
 
     $tabs_printed=0;
-    print "<div>
-            <div class='tabs'>
-                <ul>";
-                    foreach($tabs as $tab) {
-                        if($tab->data || $tab->html) {
-                            print $tab->nameplate();
-                            $tabs_printed++;
-                        }
-                    }
-    print "     </ul>";
+    print "<div>";
+    if(!isset($fightnr) || $fightnr == '') {
+        print guil('noxpsnote');
+    }
+    print "<div class='tabs'><ul>";
+    foreach($tabs as $tab) {
+        if($tab->data || $tab->html) {
+            print $tab->nameplate();
+            $tabs_printed++;
+        }
+    }
+    print "</ul>";
 
     foreach($tabs as $tab) {
         print $tab->tabcontent();
@@ -124,7 +132,7 @@
 
     // there seem to be serverload-issues preventing tabs to collect data
     // this is a simple workarround to at least reinitialise such broken tabs
-    // iow: try again (3 times)
+    // iow: try again 3 times
     if($tabs_printed == 0) {
         if($reload < 3) {
             sleep(3);
@@ -145,4 +153,15 @@
             }
         }
     }
+?>
+<?
+    $memreal = memory_get_usage(true);
+                
+    $fh = fopen('benchmarks', 'a');
+    fwrite($fh, sprintf("% 10sB % 6sKB % 3sMB % 6s ajax_accordion.php\n", 
+        $memreal, 
+        round($memreal/1024,0), 
+        round($memreal/(1024*1024),0), 
+        $_SESSION['log_id']));
+    fclose($fh);
 ?>

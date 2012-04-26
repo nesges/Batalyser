@@ -1,11 +1,19 @@
 <?
-    global $guil;
+    global $guil, $sql;
     
-    $sql_debug=0;
-    $sql_layer_database_mode='new';
-    $sql_layer_database=12;
-    include("../../../sql_layer.php");
-    unset($db); // no need to keep logindata in memory
+    // databases
+    $database['main'] = 12;
+    $database['data1'] = 13;
+    $database['data2'] = 14;
+    $database['data3'] = 15;
+    $database['data4'] = 16;
+    $database['data5'] = 17;
+    
+    include("include/class.sqllayer.php");
+    foreach($database as $dbname => $dbnr) {
+        $sql[$dbname] = new SQLLayer($dbnr);
+    }
+    $sql['main']->conn();
     
     include("include/constants.php");
     include("include/class.parser.php");

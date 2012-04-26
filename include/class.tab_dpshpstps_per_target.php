@@ -1,6 +1,6 @@
 <?
     class Tab_DpsHpsTps_per_Target extends Tab {
-        function Tab_DpsHpsTps_per_Target($name, $char, $start_id, $end_id, $class='') {
+        function Tab_DpsHpsTps_per_Target($name, $char, $start_id, $end_id, $class='', $hidexps=0) {
             global $parser;
 
             $targets = array();
@@ -59,19 +59,29 @@
                                 <td ".$bgcolor.">".$target_name."</td>
                                 <td>".$target['damage']."</td>
                                 <td>".$target['healed']."</td>
-                                <td>".$target['threat']."</td>
-                                <td>".round($target['damage'] / $duration, 2)."</td>
+                                <td>".$target['threat']."</td>";
+                        if(!$hidexps) {
+                            $data .= "<td>".round($target['damage'] / $duration, 2)."</td>
                                 <td>".round($target['healed'] / $duration, 2)."</td>
-                                <td>".round($target['threat'] / $duration, 2)."</td>
-                            </tr>";
+                                <td>".round($target['threat'] / $duration, 2)."</td>";
+                        }
+                        $data .= "</tr>";
                     }
                 }
             }
 
+            $headers = array(guil('target'), guil('damage'), guil('heal'), guil('threat'));
+            if(!$hidexps) {
+                $title = guil('xpspertarget');
+                $headers = array_merge($headers, array('DPS', 'HPS', 'TPS'));
+            } else {
+                $title = guil('damagehealthreatpertarget');
+            }
+
             parent::Tab(
                 $name, 
-                guil('xpspertarget'), 
-                array(guil('target'), guil('damage'), guil('heal'), guil('threat'), 'DPS', 'HPS', 'TPS'), 
+                $title, 
+                $headers, 
                 $data,
                 $html,
                 $class

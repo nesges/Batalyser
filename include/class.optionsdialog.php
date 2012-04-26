@@ -1,7 +1,7 @@
 <?
     class OptionsDialog extends Dialog {
         function OptionsDialog($message='') {
-            global $demo, $logfiles, $languages, $openOptions, $userchars;
+            global $demo, $logfiles, $languages, $openOptions, $userchars, $sql;
             
             parent::Dialog('options', guil('dialog_options_title'), '', 1, 1);
             
@@ -214,8 +214,8 @@
                                     <tr><td>".guil('name').":</td><td><input type='text' name='charname' size='50'></td></tr>
                                     <tr><td>".guil('class').":</td><td>
                                         <select name='charclass'>";
-                    $res = sql_query("select class_id, parent_class_id, ".$_SESSION['language']." from class order by ".$_SESSION['language']);
-                    while(list($class_id, $parent_class_id, $class_name) = sql_fetch_row($res)) {
+                    $res = $sql['main']->query("select class_id, parent_class_id, ".$_SESSION['language']." from class order by ".$_SESSION['language']);
+                    while(list($class_id, $parent_class_id, $class_name) = $sql['main']->fetch_row($res)) {
                         $html .= "<option value='".$class_id."'>".$class_name."</option>";
                     }
                     $html .= "</select>
@@ -223,16 +223,16 @@
                                     <tr><td>".guil('guild').":</td><td><input type='text' name='guild' size='50'></td></tr>
                                     <tr><td>".guil('server').":</td><td>
                                         <select name='server'>";
-                    $res = sql_query("select id, name from server order by name");
-                    while(list($server_id, $server_name) = sql_fetch_row($res)) {
+                    $res = $sql['main']->query("select id, name from server order by name");
+                    while(list($server_id, $server_name) = $sql['main']->fetch_row($res)) {
                         $html .= "<option value='".$server_id."'>".$server_name."</option>";
                     }
                     $html .= "</select>
                                     </td></tr>
                                     <tr><td>".guil('level').":</td><td><input type='text' name='charlevel' value='50' size='3'></td></tr>
                                     <tr><td>".guil('race').":</td><td><select name='charrace'>";
-                    $res = sql_query("select id, ".$_SESSION['language']." from race order by ".$_SESSION['language']);
-                    while(list($race_id, $race_name) = sql_fetch_row($res)) {
+                    $res = $sql['main']->query("select id, ".$_SESSION['language']." from race order by ".$_SESSION['language']);
+                    while(list($race_id, $race_name) = $sql['main']->fetch_row($res)) {
                         $html .= "<option value='".$race_id."'>".$race_name."</option>";
                     }
                     $html .= "</select></td></tr>
